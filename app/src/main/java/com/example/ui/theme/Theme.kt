@@ -1,173 +1,160 @@
 package com.example.ui.theme
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 
-// Warm Tactile Depot Notebook Palette (high daylight legibility in warehouse/depot)
-val WarmPaper = Color(0xFFF6F3EC)
-val WarmPaperElevated = Color(0xFFEDE8DC)
-val CardWhite = Color(0xFFFFFFFF)
-val HairlineSand = Color(0xFFE3DBCC)
-val InkCharcoal = Color(0xFF1C1917)
-val StoneMuted = Color(0xFF635C54)
-val StoneSoft = Color(0xFF8C847B)
+// --- Bold Bleu & Bordeaux Depot Palette (Zero White Glare) ---
+val NavyCanvas = Color(0xFF0A1628)         // Deep midnight blue canvas
+val NavySurface = Color(0xFF132544)        // Rich royal-navy card surface
+val NavySurfaceElevated = Color(0xFF1B335C)// Elevated inner card / input surface
+val NavyBorder = Color(0xFF2E4F86)         // Crisp steel-blue border
+val RoyalBlue = Color(0xFF2563EB)          // Vivid royal blue accent
+val RoyalBlueSoft = Color(0xFF173672)      // Soft royal blue container
 
-val Terracotta = Color(0xFFC85A28)
-val TerracottaDark = Color(0xFF9F4218)
-val TerracottaSoft = Color(0xFFFCEBE3)
+val Bordeaux = Color(0xFF7D1128)           // Deep rich Bordeaux wine (TopBar / accents)
+val BordeauxBright = Color(0xFFA61C3C)     // Bright Bordeaux highlight
+val BordeauxSoft = Color(0xFF471022)       // Subtle Bordeaux surface tint
+val BordeauxBorder = Color(0xFFB8294A)     // Bordeaux accent border
 
-val WorkshopEmerald = Color(0xFF15803D)
-val WorkshopEmeraldSoft = Color(0xFFDCFCE7)
-val WorkshopEmeraldBorder = Color(0xFF86EFAC)
+// --- Bold High-Contrast Signal Colors: Yellow, Red, Green ---
+val BoldYellow = Color(0xFFFACC15)         // Bold signal yellow (counts, active nav, qty)
+val BoldYellowDark = Color(0xFFEAB308)     // Deep amber-gold
+val BoldYellowSoft = Color(0xFF3E3208)     // Dark golden tint container
 
-val OchreAmber = Color(0xFFB45309)
-val OchreAmberBright = Color(0xFFD97706)
-val OchreAmberSoft = Color(0xFFFEF3C7)
-val OchreAmberBorder = Color(0xFFFCD34D)
+val BoldRed = Color(0xFFDC2626)            // Vivid alert red (waiting-date signal & urgent)
+val BoldRedBright = Color(0xFFEF4444)      // Bright crimson edge
+val BoldRedSoft = Color(0xFF4C1116)        // Deep red pill tint
 
-val CobaltPhone = Color(0xFF0369A1)
-val CobaltPhoneSoft = Color(0xFFE0F2FE)
+val BoldGreen = Color(0xFF16A34A)          // Bold confirmation green (Livré / Acheté)
+val BoldGreenBright = Color(0xFF22C55E)    // Bright emerald highlight
+val BoldGreenSoft = Color(0xFF0B3B22)      // Deep green pill tint
 
-val BrickRed = Color(0xFFB91C1C)
-val BrickRedSoft = Color(0xFFFEE2E2)
+// --- Crisp Legible Text on Dark Navy/Bordeaux ---
+val TextPrimary = Color(0xFFF8FAFC)        // Crisp ice-white text
+val TextSecondary = Color(0xFFCBD5E1)      // Clear silver-slate metadata
+val TextMuted = Color(0xFF94A3B8)          // Muted label text
+val OnBoldYellow = Color(0xFF0A1628)       // Deep navy text on yellow badges/buttons
 
-val OutfitDisplayFamily = FontFamily(
+private val DepotDarkBlueBordeauxScheme = darkColorScheme(
+    primary = BoldYellow,
+    onPrimary = OnBoldYellow,
+    primaryContainer = Bordeaux,
+    onPrimaryContainer = TextPrimary,
+    secondary = RoyalBlue,
+    onSecondary = TextPrimary,
+    secondaryContainer = RoyalBlueSoft,
+    onSecondaryContainer = TextPrimary,
+    tertiary = BoldGreenBright,
+    onTertiary = OnBoldYellow,
+    tertiaryContainer = BoldGreenSoft,
+    onTertiaryContainer = BoldGreenBright,
+    background = NavyCanvas,
+    onBackground = TextPrimary,
+    surface = NavySurface,
+    onSurface = TextPrimary,
+    surfaceVariant = NavySurfaceElevated,
+    onSurfaceVariant = TextSecondary,
+    outline = NavyBorder,
+    outlineVariant = BordeauxBorder,
+    error = BoldRedBright,
+    onError = TextPrimary,
+    errorContainer = BoldRedSoft,
+    onErrorContainer = Color(0xFFFECACA)
+)
+
+val OutfitFontFamily = FontFamily(
     Font(R.font.outfit, FontWeight.Normal),
     Font(R.font.outfit, FontWeight.Medium),
     Font(R.font.outfit, FontWeight.SemiBold),
-    Font(R.font.outfit, FontWeight.Bold),
-    Font(R.font.outfit, FontWeight.ExtraBold)
+    Font(R.font.outfit, FontWeight.Bold)
 )
 
-val JakartaBodyFamily = FontFamily(
+val PlusJakartaSansFamily = FontFamily(
     Font(R.font.plus_jakarta_sans, FontWeight.Normal),
     Font(R.font.plus_jakarta_sans, FontWeight.Medium),
     Font(R.font.plus_jakarta_sans, FontWeight.SemiBold),
     Font(R.font.plus_jakarta_sans, FontWeight.Bold)
 )
 
-private val DepotLightColorScheme = lightColorScheme(
-    primary = Terracotta,
-    onPrimary = Color.White,
-    primaryContainer = TerracottaSoft,
-    onPrimaryContainer = TerracottaDark,
-    secondary = WorkshopEmerald,
-    onSecondary = Color.White,
-    secondaryContainer = WorkshopEmeraldSoft,
-    onSecondaryContainer = Color(0xFF0F5132),
-    tertiary = OchreAmberBright,
-    onTertiary = Color.White,
-    tertiaryContainer = OchreAmberSoft,
-    onTertiaryContainer = OchreAmber,
-    background = WarmPaper,
-    onBackground = InkCharcoal,
-    surface = CardWhite,
-    onSurface = InkCharcoal,
-    surfaceVariant = WarmPaperElevated,
-    onSurfaceVariant = StoneMuted,
-    outline = HairlineSand,
-    outlineVariant = Color(0xFFD6CEC0),
-    error = BrickRed,
-    onError = Color.White,
-    errorContainer = BrickRedSoft,
-    onErrorContainer = BrickRed
-)
-
 val DepotTypography = Typography(
-    headlineMedium = TextStyle(
-        fontFamily = OutfitDisplayFamily,
+    headlineLarge = TextStyle(
+        fontFamily = OutfitFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 26.sp,
-        lineHeight = 32.sp,
-        letterSpacing = (-0.4).sp
+        fontSize = 28.sp,
+        lineHeight = 34.sp
     ),
-    headlineSmall = TextStyle(
-        fontFamily = OutfitDisplayFamily,
+    headlineMedium = TextStyle(
+        fontFamily = OutfitFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = (-0.2).sp
+        fontSize = 23.sp,
+        lineHeight = 29.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = OutfitDisplayFamily,
+        fontFamily = OutfitFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 19.sp,
-        lineHeight = 25.sp
+        fontSize = 20.sp,
+        lineHeight = 26.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = JakartaBodyFamily,
+        fontFamily = PlusJakartaSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp,
         lineHeight = 22.sp
     ),
     titleSmall = TextStyle(
-        fontFamily = JakartaBodyFamily,
+        fontFamily = PlusJakartaSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 20.sp
     ),
     bodyLarge = TextStyle(
-        fontFamily = JakartaBodyFamily,
+        fontFamily = PlusJakartaSansFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
-        lineHeight = 22.sp
+        lineHeight = 23.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = JakartaBodyFamily,
+        fontFamily = PlusJakartaSansFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp
     ),
-    bodySmall = TextStyle(
-        fontFamily = JakartaBodyFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp
-    ),
     labelLarge = TextStyle(
-        fontFamily = JakartaBodyFamily,
+        fontFamily = PlusJakartaSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         lineHeight = 18.sp
     ),
     labelMedium = TextStyle(
-        fontFamily = JakartaBodyFamily,
-        fontWeight = FontWeight.SemiBold,
+        fontFamily = PlusJakartaSansFamily,
+        fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         lineHeight = 16.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = JakartaBodyFamily,
+        fontFamily = PlusJakartaSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp,
         lineHeight = 14.sp
     )
 )
 
-val DepotShapes = Shapes(
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(22.dp)
-)
-
 @Composable
-fun DepotNoteTheme(content: @Composable () -> Unit) {
+fun DepotNoteTheme(
+    content: @Composable () -> Unit
+) {
     MaterialTheme(
-        colorScheme = DepotLightColorScheme,
+        colorScheme = DepotDarkBlueBordeauxScheme,
         typography = DepotTypography,
-        shapes = DepotShapes,
         content = content
     )
 }

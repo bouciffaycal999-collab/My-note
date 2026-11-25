@@ -2,25 +2,19 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -28,12 +22,9 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.LocalShipping
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,8 +32,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,368 +45,300 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.data.JournalEntry
+import com.example.data.JournalEntryEntity
 import com.example.data.JournalEntryType
-import com.example.data.UiState
 import com.example.data.formatDayKey
 import com.example.data.formatTimeHm
 import com.example.data.groupJournalByDay
-import com.example.ui.theme.BrickRed
-import com.example.ui.theme.CardWhite
-import com.example.ui.theme.HairlineSand
-import com.example.ui.theme.InkCharcoal
-import com.example.ui.theme.OchreAmber
-import com.example.ui.theme.OchreAmberBorder
-import com.example.ui.theme.OchreAmberBright
-import com.example.ui.theme.OchreAmberSoft
-import com.example.ui.theme.StoneMuted
-import com.example.ui.theme.StoneSoft
-import com.example.ui.theme.Terracotta
-import com.example.ui.theme.WarmPaper
-import com.example.ui.theme.WarmPaperElevated
-import com.example.ui.theme.WorkshopEmerald
-import com.example.ui.theme.WorkshopEmeraldBorder
-import com.example.ui.theme.WorkshopEmeraldSoft
-import java.util.Date
+import com.example.ui.theme.BoldGreen
+import com.example.ui.theme.BoldGreenBright
+import com.example.ui.theme.BoldGreenSoft
+import com.example.ui.theme.BoldYellow
+import com.example.ui.theme.BoldYellowSoft
+import com.example.ui.theme.Bordeaux
+import com.example.ui.theme.BordeauxBorder
+import com.example.ui.theme.NavyBorder
+import com.example.ui.theme.NavyCanvas
+import com.example.ui.theme.NavySurface
+import com.example.ui.theme.NavySurfaceElevated
+import com.example.ui.theme.OnBoldYellow
+import com.example.ui.theme.RoyalBlue
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
-private enum class JournalFilter { ALL, DELIVERY, PURCHASE }
+private enum class JournalFilter {
+    ALL,
+    DELIVERIES,
+    PURCHASES
+}
 
 @Composable
 fun JournalScreen(
-    state: UiState<List<JournalEntry>>,
-    onDeleteEntry: (String) -> Unit
+    entries: List<JournalEntryEntity>,
+    onDeleteEntry: (Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var activeFilter by remember { mutableStateOf(JournalFilter.ALL) }
-    var deletingEntry by remember { mutableStateOf<JournalEntry?>(null) }
+    var filter by remember { mutableStateOf(JournalFilter.ALL) }
+
+    val todayKey = remember { formatDayKey(System.currentTimeMillis()) }
+    val todayDeliveries = remember(entries, todayKey) {
+        entries.count { it.dayKey == todayKey && it.type == JournalEntryType.DELIVERY }
+    }
+    val todayPurchases = remember(entries, todayKey) {
+        entries.count { it.dayKey == todayKey && it.type == JournalEntryType.PURCHASE }
+    }
+
+    val filteredGroups = remember(entries, searchQuery, filter) {
+        val q = searchQuery.trim().lowercase()
+        val filtered = entries.filter { entry ->
+            val matchesType = when (filter) {
+                JournalFilter.ALL -> true
+                JournalFilter.DELIVERIES -> entry.type == JournalEntryType.DELIVERY
+                JournalFilter.PURCHASES -> entry.type == JournalEntryType.PURCHASE
+            }
+            val matchesQuery = q.isEmpty() ||
+                entry.articleText.lowercase().contains(q) ||
+                entry.clientName.lowercase().contains(q) ||
+                entry.clientPhone.lowercase().contains(q) ||
+                entry.quantityNote.lowercase().contains(q)
+            matchesType && matchesQuery
+        }
+        groupJournalByDay(filtered)
+    }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .background(WarmPaper)
+            .background(NavyCanvas)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 760.dp)
+                .widthIn(max = 720.dp)
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
-
-            when (state) {
-                is UiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = WorkshopEmerald)
+            // Today Summary Card (Bordeaux + Green/Yellow)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Bordeaux,
+                border = BorderStroke(1.5.dp, BordeauxBorder),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = todayDeliveries.toString(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = BoldGreenBright,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "Livrés aujourd'hui",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextPrimary
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = todayPurchases.toString(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = BoldYellow,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "Commandés aujourd'hui",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextPrimary
+                        )
                     }
                 }
+            }
 
-                is UiState.Error -> {
-                    ErrorNoticeCard(message = state.message)
-                }
-
-                is UiState.Success -> {
-                    val allEntries = state.data
-                    val todayKey = remember { formatDayKey(Date()) }
-                    val todayDeliveries = remember(allEntries, todayKey) {
-                        allEntries.count { it.dayKey == todayKey && it.type == JournalEntryType.DELIVERY }
-                    }
-                    val todayPurchases = remember(allEntries, todayKey) {
-                        allEntries.count { it.dayKey == todayKey && it.type == JournalEntryType.PURCHASE }
-                    }
-
-                    // Today's quick summary strip
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = CardWhite,
-                        border = BorderStroke(1.dp, HairlineSand),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Aujourd'hui",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = InkCharcoal
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Surface(
-                                    shape = RoundedCornerShape(9.dp),
-                                    color = WorkshopEmeraldSoft,
-                                    border = BorderStroke(1.dp, WorkshopEmeraldBorder)
-                                ) {
-                                    Text(
-                                        text = "$todayDeliveries livré(s)",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = WorkshopEmerald,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-                                    )
-                                }
-                                Surface(
-                                    shape = RoundedCornerShape(9.dp),
-                                    color = OchreAmberSoft,
-                                    border = BorderStroke(1.dp, OchreAmberBorder)
-                                ) {
-                                    Text(
-                                        text = "$todayPurchases commandé(s)",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = OchreAmber,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Search + Filter Chips
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        singleLine = true,
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.journal_search_hint),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = StoneSoft
-                            )
-                        },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = StoneMuted) },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { searchQuery = "" },
-                                    modifier = Modifier.minimumInteractiveComponentSize()
-                                ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Effacer", tint = StoneMuted)
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = CardWhite,
-                            unfocusedContainerColor = CardWhite,
-                            focusedBorderColor = WorkshopEmerald,
-                            unfocusedBorderColor = HairlineSand
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("journal_search_input")
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = {
+                    Text(
+                        stringResource(R.string.journal_search_hint),
+                        color = TextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        JournalFilterChip(
-                            label = "Tout (${allEntries.size})",
-                            selected = activeFilter == JournalFilter.ALL,
-                            selectedColor = InkCharcoal,
-                            onClick = { activeFilter = JournalFilter.ALL },
-                            testTag = "journal_filter_all"
-                        )
-                        JournalFilterChip(
-                            label = "Livraisons (${allEntries.count { it.type == JournalEntryType.DELIVERY }})",
-                            selected = activeFilter == JournalFilter.DELIVERY,
-                            selectedColor = WorkshopEmerald,
-                            onClick = { activeFilter = JournalFilter.DELIVERY },
-                            testTag = "journal_filter_delivery"
-                        )
-                        JournalFilterChip(
-                            label = "Commandes (${allEntries.count { it.type == JournalEntryType.PURCHASE }})",
-                            selected = activeFilter == JournalFilter.PURCHASE,
-                            selectedColor = OchreAmberBright,
-                            onClick = { activeFilter = JournalFilter.PURCHASE },
-                            testTag = "journal_filter_purchase"
-                        )
-                    }
-
-                    val filteredEntries = remember(allEntries, activeFilter, searchQuery) {
-                        val q = searchQuery.trim().lowercase()
-                        allEntries.filter { entry ->
-                            val matchesFilter = when (activeFilter) {
-                                JournalFilter.ALL -> true
-                                JournalFilter.DELIVERY -> entry.type == JournalEntryType.DELIVERY
-                                JournalFilter.PURCHASE -> entry.type == JournalEntryType.PURCHASE
-                            }
-                            val matchesQuery = q.isEmpty() ||
-                                entry.articleText.lowercase().contains(q) ||
-                                entry.quantityNote.lowercase().contains(q) ||
-                                entry.clientName.lowercase().contains(q) ||
-                                entry.clientPhone.lowercase().contains(q) ||
-                                entry.clientAddress.lowercase().contains(q) ||
-                                entry.dayKey.contains(q)
-                            matchesFilter && matchesQuery
+                },
+                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = BoldYellow) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Effacer", tint = TextSecondary)
                         }
                     }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = NavySurfaceElevated,
+                    unfocusedContainerColor = NavySurface,
+                    focusedBorderColor = BoldYellow,
+                    unfocusedBorderColor = NavyBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = BoldYellow
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .testTag("journal_search_input")
+            )
 
-                    val dayGroups = remember(filteredEntries) {
-                        groupJournalByDay(filteredEntries)
-                    }
+            // Filter Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filter == JournalFilter.ALL,
+                    onClick = { filter = JournalFilter.ALL },
+                    label = { Text("Tout", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = RoyalBlue,
+                        selectedLabelColor = TextPrimary,
+                        containerColor = NavySurface,
+                        labelColor = TextSecondary
+                    ),
+                    modifier = Modifier.testTag("journal_filter_all")
+                )
+                FilterChip(
+                    selected = filter == JournalFilter.DELIVERIES,
+                    onClick = { filter = JournalFilter.DELIVERIES },
+                    label = { Text("Livraisons", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = BoldGreen,
+                        selectedLabelColor = TextPrimary,
+                        containerColor = NavySurface,
+                        labelColor = BoldGreenBright
+                    ),
+                    modifier = Modifier.testTag("journal_filter_deliveries")
+                )
+                FilterChip(
+                    selected = filter == JournalFilter.PURCHASES,
+                    onClick = { filter = JournalFilter.PURCHASES },
+                    label = { Text("Commandes", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = BoldYellow,
+                        selectedLabelColor = OnBoldYellow,
+                        containerColor = NavySurface,
+                        labelColor = BoldYellow
+                    ),
+                    modifier = Modifier.testTag("journal_filter_purchases")
+                )
+            }
 
-                    if (dayGroups.isEmpty()) {
-                        EmptyDepotState(
-                            icon = Icons.Default.History,
-                            iconBg = WorkshopEmeraldSoft,
-                            iconTint = WorkshopEmerald,
-                            title = if (searchQuery.isNotBlank() || activeFilter != JournalFilter.ALL) {
-                                "Aucun historique correspondant"
-                            } else {
-                                stringResource(R.string.journal_empty_title)
-                            },
-                            description = if (searchQuery.isNotBlank() || activeFilter != JournalFilter.ALL) {
-                                "Essayez un autre filtre ou mot-clé."
-                            } else {
-                                stringResource(R.string.journal_empty_desc)
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .testTag("journal_entries_list"),
-                            contentPadding = PaddingValues(bottom = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+            if (filteredGroups.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Bordeaux,
+                            border = BorderStroke(2.dp, BoldYellow),
+                            modifier = Modifier.size(64.dp)
                         ) {
-                            dayGroups.forEach { group ->
-                                item(key = "header_${group.dayKey}") {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 6.dp, bottom = 2.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = group.headerLabel,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = InkCharcoal
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = WarmPaperElevated
-                                        ) {
-                                            Text(
-                                                text = "${group.entries.size}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = StoneMuted,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                items(group.entries, key = { it.id }) { entry ->
-                                    JournalEntryCard(
-                                        entry = entry,
-                                        onDelete = { deletingEntry = entry }
-                                    )
-                                }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Filled.History,
+                                    contentDescription = null,
+                                    tint = BoldYellow,
+                                    modifier = Modifier.size(32.dp)
+                                )
                             }
+                        }
+                        Text(
+                            text = stringResource(R.string.journal_empty_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = stringResource(R.string.journal_empty_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    filteredGroups.forEach { group ->
+                        item(key = "header_${group.dayKey}") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp, bottom = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = group.label,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = BoldYellow,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Text(
+                                    text = "${group.entries.size} action${if (group.entries.size > 1) "s" else ""}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+                        items(group.entries, key = { it.id }) { entry ->
+                            JournalEntryCard(
+                                entry = entry,
+                                onDelete = { onDeleteEntry(entry.id) }
+                            )
                         }
                     }
                 }
             }
         }
     }
-
-    deletingEntry?.let { target ->
-        AlertDialog(
-            onDismissRequest = { deletingEntry = null },
-            containerColor = CardWhite,
-            title = {
-                Text(
-                    text = "Supprimer du journal ?",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = InkCharcoal
-                )
-            },
-            text = {
-                Text(
-                    text = "Retirer « ${target.articleText} » de l'historique ?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = StoneMuted
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDeleteEntry(target.id)
-                        deletingEntry = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrickRed)
-                ) {
-                    Text(stringResource(R.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deletingEntry = null }) {
-                    Text(stringResource(R.string.action_cancel), color = StoneMuted)
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun JournalFilterChip(
-    label: String,
-    selected: Boolean,
-    selectedColor: Color,
-    onClick: () -> Unit,
-    testTag: String
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = if (selected) selectedColor else CardWhite,
-        border = BorderStroke(1.dp, if (selected) selectedColor else HairlineSand),
-        modifier = Modifier.testTag(testTag)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) Color.White else StoneMuted,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-    }
 }
 
 @Composable
 private fun JournalEntryCard(
-    entry: JournalEntry,
+    entry: JournalEntryEntity,
     onDelete: () -> Unit
 ) {
     val isDelivery = entry.type == JournalEntryType.DELIVERY
-    val accentColor = if (isDelivery) WorkshopEmerald else OchreAmberBright
-    val badgeBg = if (isDelivery) WorkshopEmeraldSoft else OchreAmberSoft
-    val badgeFg = if (isDelivery) WorkshopEmerald else OchreAmber
+    val badgeBg = if (isDelivery) BoldGreenSoft else BoldYellowSoft
+    val badgeBorder = if (isDelivery) BoldGreenBright else BoldYellow
+    val badgeText = if (isDelivery) BoldGreenBright else BoldYellow
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = CardWhite,
-        border = BorderStroke(1.dp, HairlineSand),
-        shadowElevation = 1.dp,
+        shape = RoundedCornerShape(14.dp),
+        color = NavySurface,
+        border = BorderStroke(1.dp, NavyBorder),
         modifier = Modifier
             .fillMaxWidth()
             .testTag("journal_entry_${entry.id}")
@@ -425,111 +346,85 @@ private fun JournalEntryCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .width(5.dp)
-                    .fillMaxHeight()
-                    .background(accentColor)
-            )
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = badgeBg,
+                border = BorderStroke(1.dp, badgeBorder),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (isDelivery) Icons.Filled.LocalShipping else Icons.Filled.Inventory2,
+                        contentDescription = null,
+                        tint = badgeText,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = badgeBg
+                        color = if (isDelivery) BoldGreen else BoldYellow,
+                        shape = RoundedCornerShape(5.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isDelivery) Icons.Default.LocalShipping else Icons.Default.Inventory2,
-                                contentDescription = null,
-                                tint = badgeFg,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = if (isDelivery) "LIVRÉ" else "COMMANDÉ",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = badgeFg,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(
+                            text = if (isDelivery) "LIVRÉ" else "COMMANDÉ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isDelivery) TextPrimary else OnBoldYellow,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                        )
                     }
-
                     Text(
-                        text = formatTimeHm(entry.createdAt),
+                        text = formatTimeHm(entry.createdAtMs),
                         style = MaterialTheme.typography.labelSmall,
-                        color = StoneSoft
+                        color = TextMuted
                     )
                 }
 
                 Text(
                     text = entry.articleText,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = InkCharcoal
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
                 )
 
-                if (entry.quantityNote.isNotBlank()) {
+                val subline = buildList {
+                    if (entry.clientName.isNotBlank()) add("Client : ${entry.clientName}")
+                    if (entry.clientPhone.isNotBlank()) add(entry.clientPhone)
+                    if (entry.quantityNote.isNotBlank()) add(entry.quantityNote)
+                }.joinToString(" · ")
+                if (subline.isNotBlank()) {
                     Text(
-                        text = entry.quantityNote,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = StoneMuted
+                        text = subline,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-
-                val clientSummary = listOf(entry.clientName, entry.clientPhone, entry.clientAddress)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" • ")
-
-                if (clientSummary.isNotBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = Terracotta,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = clientSummary,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = StoneMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
             }
 
             IconButton(
                 onClick = onDelete,
-                modifier = Modifier
-                    .padding(end = 4.dp)
-                    .minimumInteractiveComponentSize()
+                modifier = Modifier.testTag("delete_journal_entry_${entry.id}")
             ) {
                 Icon(
-                    imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = "Supprimer cette entrée",
-                    tint = StoneSoft,
-                    modifier = Modifier.size(19.dp)
+                    Icons.Filled.DeleteOutline,
+                    contentDescription = "Supprimer du journal",
+                    tint = Color(0xFFFCA5A5),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }

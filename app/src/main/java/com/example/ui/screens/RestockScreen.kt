@@ -1,21 +1,16 @@
 package com.example.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +24,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory2
@@ -37,13 +31,12 @@ import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,291 +48,241 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.example.R
-import com.example.data.RestockNote
-import com.example.data.UiState
+import com.example.data.RestockNoteEntity
 import com.example.data.formatShortDate
-import com.example.ui.theme.BrickRed
-import com.example.ui.theme.BrickRedSoft
-import com.example.ui.theme.CardWhite
-import com.example.ui.theme.HairlineSand
-import com.example.ui.theme.InkCharcoal
-import com.example.ui.theme.OchreAmber
-import com.example.ui.theme.OchreAmberBorder
-import com.example.ui.theme.OchreAmberBright
-import com.example.ui.theme.OchreAmberSoft
-import com.example.ui.theme.StoneMuted
-import com.example.ui.theme.StoneSoft
-import com.example.ui.theme.WarmPaper
-import com.example.ui.theme.WarmPaperElevated
+import com.example.ui.theme.BoldGreen
+import com.example.ui.theme.BoldRed
+import com.example.ui.theme.BoldRedBright
+import com.example.ui.theme.BoldRedSoft
+import com.example.ui.theme.BoldYellow
+import com.example.ui.theme.BoldYellowSoft
+import com.example.ui.theme.Bordeaux
+import com.example.ui.theme.BordeauxBorder
+import com.example.ui.theme.NavyBorder
+import com.example.ui.theme.NavyCanvas
+import com.example.ui.theme.NavySurface
+import com.example.ui.theme.OnBoldYellow
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun RestockScreen(
-    state: UiState<List<RestockNote>>,
+    notes: List<RestockNoteEntity>,
     onAddRestock: (articleName: String, quantityNote: String, urgent: Boolean) -> Unit,
-    onUpdateRestock: (noteId: String, articleName: String, quantityNote: String, urgent: Boolean) -> Unit,
-    onCheckOffPurchased: (RestockNote) -> Unit,
-    onDeleteRestock: (String) -> Unit
+    onUpdateRestock: (noteId: Long, articleName: String, quantityNote: String, urgent: Boolean) -> Unit,
+    onCheckOffPurchased: (RestockNoteEntity) -> Unit,
+    onDeleteRestock: (noteId: Long) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var articleName by remember { mutableStateOf("") }
-    var quantityNote by remember { mutableStateOf("") }
-    var isUrgent by remember { mutableStateOf(false) }
-
-    var editingNote by remember { mutableStateOf<RestockNote?>(null) }
-    var deletingNote by remember { mutableStateOf<RestockNote?>(null) }
+    var quickName by remember { mutableStateOf("") }
+    var quickQty by remember { mutableStateOf("") }
+    var quickUrgent by remember { mutableStateOf(false) }
+    var editingNote by remember { mutableStateOf<RestockNoteEntity?>(null) }
 
     fun submitQuickAdd() {
-        val clean = articleName.trim()
-        if (clean.isEmpty()) return
-        onAddRestock(clean, quantityNote.trim(), isUrgent)
-        articleName = ""
-        quantityNote = ""
-        isUrgent = false
+        if (quickName.isNotBlank()) {
+            onAddRestock(quickName, quickQty, quickUrgent)
+            quickName = ""
+            quickQty = ""
+            quickUrgent = false
+        }
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .background(WarmPaper)
+            .background(NavyCanvas)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 760.dp)
+                .widthIn(max = 720.dp)
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Quick Depot Walk-Around Input Card
+            // Fast Depot Walk-Around Input Card (Bordeaux + Navy)
             Surface(
                 shape = RoundedCornerShape(18.dp),
-                color = CardWhite,
-                border = BorderStroke(1.2.dp, OchreAmberBorder),
-                shadowElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth()
+                color = NavySurface,
+                border = BorderStroke(1.5.dp, BordeauxBorder),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "Noter un article presque épuisé",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = OchreAmber
-                    )
-
-                    OutlinedTextField(
-                        value = articleName,
-                        onValueChange = { articleName = it.take(200) },
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.restock_input_hint),
-                                color = StoneSoft,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Next
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = OchreAmberBright,
-                            unfocusedBorderColor = HairlineSand
-                        ),
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("restock_article_input")
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            .background(Bordeaux)
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text(
+                            text = "Note rapide dépôt",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = BoldYellow,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "${notes.size} à acheter",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextPrimary
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         OutlinedTextField(
-                            value = quantityNote,
-                            onValueChange = { quantityNote = it.take(100) },
-                            placeholder = {
-                                Text(
-                                    text = stringResource(R.string.restock_qty_hint),
-                                    color = StoneSoft,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            },
+                            value = quickName,
+                            onValueChange = { quickName = it },
+                            placeholder = { Text(stringResource(R.string.restock_input_hint), color = TextMuted) },
                             singleLine = true,
+                            colors = depotInputColors(),
+                            shape = RoundedCornerShape(12.dp),
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Sentences,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(onDone = { submitQuickAdd() }),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = OchreAmberBright,
-                                unfocusedBorderColor = HairlineSand
+                                imeAction = ImeAction.Next
                             ),
                             modifier = Modifier
-                                .weight(1f)
-                                .testTag("restock_qty_input")
+                                .fillMaxWidth()
+                                .testTag("restock_article_input")
                         )
 
-                        // Urgent pill
-                        Surface(
-                            onClick = { isUrgent = !isUrgent },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isUrgent) BrickRedSoft else WarmPaper,
-                            border = BorderStroke(
-                                width = 1.2.dp,
-                                color = if (isUrgent) BrickRed else HairlineSand
-                            ),
-                            modifier = Modifier
-                                .height(54.dp)
-                                .testTag("restock_urgent_toggle")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PriorityHigh,
-                                    contentDescription = "Marquer urgent",
-                                    tint = if (isUrgent) BrickRed else StoneMuted,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "Urgent",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (isUrgent) BrickRed else StoneMuted,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                            OutlinedTextField(
+                                value = quickQty,
+                                onValueChange = { quickQty = it },
+                                placeholder = { Text(stringResource(R.string.restock_qty_hint), color = TextMuted) },
+                                singleLine = true,
+                                colors = depotInputColors(),
+                                shape = RoundedCornerShape(12.dp),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { submitQuickAdd() }),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("restock_qty_input")
+                            )
+
+                            FilterChip(
+                                selected = quickUrgent,
+                                onClick = { quickUrgent = !quickUrgent },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.PriorityHigh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                label = { Text("Urgent", fontWeight = FontWeight.Bold) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = BoldRed,
+                                    selectedLabelColor = TextPrimary,
+                                    selectedLeadingIconColor = BoldYellow,
+                                    containerColor = BoldRedSoft,
+                                    labelColor = Color(0xFFFCA5A5),
+                                    iconColor = BoldRedBright
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = quickUrgent,
+                                    borderColor = BoldRedBright,
+                                    selectedBorderColor = BoldYellow
+                                ),
+                                modifier = Modifier.testTag("restock_urgent_toggle")
+                            )
                         }
 
                         Button(
                             onClick = { submitQuickAdd() },
-                            enabled = articleName.isNotBlank(),
+                            enabled = quickName.isNotBlank(),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = OchreAmberBright,
-                                contentColor = Color.White
+                                containerColor = BoldYellow,
+                                contentColor = OnBoldYellow
                             ),
-                            contentPadding = PaddingValues(horizontal = 14.dp),
                             modifier = Modifier
-                                .height(54.dp)
+                                .fillMaxWidth()
+                                .height(48.dp)
                                 .testTag("restock_add_btn")
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.restock_add_btn),
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
                             )
                         }
                     }
                 }
             }
 
-            when (state) {
-                is UiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = OchreAmberBright)
-                    }
-                }
-
-                is UiState.Error -> {
-                    ErrorNoticeCard(message = state.message)
-                }
-
-                is UiState.Success -> {
-                    val notes = state.data
-                    val urgentCount = notes.count { it.urgent }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            if (notes.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = OchreAmberSoft,
-                            border = BorderStroke(1.dp, OchreAmberBorder)
+                            shape = CircleShape,
+                            color = Bordeaux,
+                            border = BorderStroke(2.dp, BoldYellow),
+                            modifier = Modifier.size(64.dp)
                         ) {
-                            Text(
-                                text = if (urgentCount > 0) {
-                                    "${notes.size} à commander • $urgentCount urgent(s)"
-                                } else {
-                                    "${notes.size} article(s) à commander"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = OchreAmber,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            )
-                        }
-                        if (notes.isNotEmpty()) {
-                            Text(
-                                text = "Cochez une fois acheté",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = StoneMuted
-                            )
-                        }
-                    }
-
-                    if (notes.isEmpty()) {
-                        EmptyDepotState(
-                            icon = Icons.Default.Inventory2,
-                            iconBg = OchreAmberSoft,
-                            iconTint = OchreAmber,
-                            title = stringResource(R.string.restock_empty_title),
-                            description = stringResource(R.string.restock_empty_desc),
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .testTag("restock_notes_list"),
-                            contentPadding = PaddingValues(bottom = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(notes, key = { it.id }) { note ->
-                                RestockNoteCard(
-                                    note = note,
-                                    onCheckOff = { onCheckOffPurchased(note) },
-                                    onEdit = { editingNote = note },
-                                    onDelete = { deletingNote = note }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Filled.Inventory2,
+                                    contentDescription = null,
+                                    tint = BoldYellow,
+                                    modifier = Modifier.size(32.dp)
                                 )
                             }
                         }
+                        Text(
+                            text = stringResource(R.string.restock_empty_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = stringResource(R.string.restock_empty_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(notes, key = { it.id }) { note ->
+                        RestockItemCard(
+                            note = note,
+                            onCheckOff = { onCheckOffPurchased(note) },
+                            onEdit = { editingNote = note },
+                            onDelete = { onDeleteRestock(note.id) }
+                        )
                     }
                 }
             }
@@ -347,7 +290,7 @@ fun RestockScreen(
     }
 
     editingNote?.let { target ->
-        RestockEditDialog(
+        EditRestockDialog(
             note = target,
             onDismiss = { editingNote = null },
             onSave = { name, qty, urgent ->
@@ -356,301 +299,190 @@ fun RestockScreen(
             }
         )
     }
-
-    deletingNote?.let { target ->
-        AlertDialog(
-            onDismissRequest = { deletingNote = null },
-            containerColor = CardWhite,
-            title = {
-                Text(
-                    text = "Retirer cet article ?",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = InkCharcoal
-                )
-            },
-            text = {
-                Text(
-                    text = "« ${target.articleName} » sera supprimé sans être enregistré au journal.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = StoneMuted
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDeleteRestock(target.id)
-                        deletingNote = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrickRed)
-                ) {
-                    Text(stringResource(R.string.action_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deletingNote = null }) {
-                    Text(stringResource(R.string.action_cancel), color = StoneMuted)
-                }
-            }
-        )
-    }
 }
 
 @Composable
-private fun RestockNoteCard(
-    note: RestockNote,
+private fun RestockItemCard(
+    note: RestockNoteEntity,
     onCheckOff: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = CardWhite,
+        color = NavySurface,
         border = BorderStroke(
-            width = 1.dp,
-            color = if (note.urgent) BrickRed.copy(alpha = 0.4f) else HairlineSand
+            width = if (note.urgent) 2.dp else 1.5.dp,
+            color = if (note.urgent) BoldRedBright else NavyBorder
         ),
-        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
             .testTag("restock_card_${note.id}")
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(if (note.urgent) BrickRed else OchreAmberBright)
-            )
-
-            // Large tactile checkbox target (48dp+)
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clickable(onClick = onCheckOff)
-                    .testTag("restock_check_${note.id}"),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = WarmPaper,
-                    border = BorderStroke(2.dp, if (note.urgent) BrickRed else OchreAmberBright),
-                    modifier = Modifier.size(28.dp)
-                ) {}
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (note.urgent) {
+                            Surface(
+                                color = BoldRed,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "URGENT",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BoldYellow,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Noté le ${formatShortDate(note.createdAtMs)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted
+                        )
+                    }
+
                     Text(
                         text = note.articleName,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = InkCharcoal,
-                        modifier = Modifier.weight(1f, fill = false)
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.ExtraBold
                     )
-                    if (note.urgent) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = BrickRedSoft
-                        ) {
-                            Text(
-                                text = "URGENT",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = BrickRed,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
                     if (note.quantityNote.isNotBlank()) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = WarmPaperElevated
+                            color = BoldYellowSoft,
+                            border = BorderStroke(1.dp, BoldYellow),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
                                 text = note.quantityNote,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = InkCharcoal,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                color = BoldYellow,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
-                    Text(
-                        text = formatShortDate(note.createdAt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = StoneSoft
-                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.testTag("edit_restock_${note.id}")
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Modifier", tint = BoldYellow, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.testTag("delete_restock_${note.id}")
+                    ) {
+                        Icon(Icons.Filled.DeleteOutline, contentDescription = "Supprimer", tint = Color(0xFFFCA5A5), modifier = Modifier.size(20.dp))
+                    }
                 }
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(end = 4.dp)
+            // Bold GREEN Purchased Check Button
+            Button(
+                onClick = onCheckOff,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BoldGreen,
+                    contentColor = TextPrimary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .minimumInteractiveComponentSize()
+                    .testTag("check_restock_purchased_${note.id}")
             ) {
-                IconButton(
-                    onClick = onEdit,
-                    modifier = Modifier.minimumInteractiveComponentSize()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Modifier l'article",
-                        tint = StoneMuted,
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.minimumInteractiveComponentSize()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DeleteOutline,
-                        contentDescription = "Supprimer l'article",
-                        tint = BrickRed.copy(alpha = 0.8f),
-                        modifier = Modifier.size(19.dp)
-                    )
-                }
+                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Acheté / Commandé ✓",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
         }
     }
 }
 
 @Composable
-private fun RestockEditDialog(
-    note: RestockNote,
+private fun EditRestockDialog(
+    note: RestockNoteEntity,
     onDismiss: () -> Unit,
-    onSave: (articleName: String, quantityNote: String, urgent: Boolean) -> Unit
+    onSave: (String, String, Boolean) -> Unit
 ) {
-    BackHandler(onBack = onDismiss)
+    var name by remember { mutableStateOf(note.articleName) }
+    var qty by remember { mutableStateOf(note.quantityNote) }
+    var urgent by remember { mutableStateOf(note.urgent) }
 
-    var name by remember(note.id) { mutableStateOf(note.articleName) }
-    var qty by remember(note.id) { mutableStateOf(note.quantityNote) }
-    var urgent by remember(note.id) { mutableStateOf(note.urgent) }
-
-    Dialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(22.dp),
-            color = WarmPaper,
-            border = BorderStroke(1.dp, HairlineSand),
-            shadowElevation = 8.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 480.dp)
-                .padding(horizontal = 16.dp)
-                .imePadding()
-        ) {
-            Column(
-                modifier = Modifier.padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Modifier l'article",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = InkCharcoal
-                    )
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.minimumInteractiveComponentSize()
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Fermer", tint = StoneMuted)
-                    }
-                }
-
+        containerColor = NavySurface,
+        titleContentColor = BoldYellow,
+        title = { Text("Modifier l'article") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it.take(200) },
-                    label = { Text("Nom de l'article") },
+                    onValueChange = { name = it },
+                    label = { Text("Article") },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    colors = depotInputColors(),
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 OutlinedTextField(
                     value = qty,
-                    onValueChange = { qty = it.take(100) },
-                    label = { Text("Quantité / remarque (optionnel)") },
+                    onValueChange = { qty = it },
+                    label = { Text("Quantité / remarque") },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    colors = depotInputColors(),
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Surface(
+                FilterChip(
+                    selected = urgent,
                     onClick = { urgent = !urgent },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (urgent) BrickRedSoft else CardWhite,
-                    border = BorderStroke(1.2.dp, if (urgent) BrickRed else HairlineSand),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Marquer comme urgent",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (urgent) BrickRed else InkCharcoal
-                        )
-                        if (urgent) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = BrickRed)
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.action_cancel), color = StoneMuted)
-                    }
-                    Button(
-                        onClick = { if (name.isNotBlank()) onSave(name.trim(), qty.trim(), urgent) },
-                        enabled = name.isNotBlank(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = OchreAmberBright),
-                        modifier = Modifier
-                            .weight(1.2f)
-                            .height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
-                    }
-                }
+                    leadingIcon = { Icon(Icons.Filled.PriorityHigh, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    label = { Text("Urgent", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = BoldRed,
+                        selectedLabelColor = TextPrimary,
+                        containerColor = BoldRedSoft,
+                        labelColor = Color(0xFFFCA5A5)
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (name.isNotBlank()) onSave(name, qty, urgent) },
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = BoldGreen, contentColor = TextPrimary)
+            ) {
+                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel), color = TextSecondary)
             }
         }
-    }
+    )
 }

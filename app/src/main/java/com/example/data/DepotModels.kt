@@ -1,249 +1,260 @@
 package com.example.data
 
-import androidx.annotation.Keep
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentId
-import com.google.firebase.firestore.IgnoreExtraProperties
-import com.google.firebase.firestore.ServerTimestamp
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import androidx.room.Relation
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
-sealed interface UiState<out T> {
-    data object Loading : UiState<Nothing>
-    data class Success<T>(val data: T) : UiState<T>
-    data class Error(val message: String) : UiState<Nothing>
+@Entity(tableName = "delivery_notes")
+data class DeliveryNoteEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    val clientName: String = "",
+    val clientPhone: String = "",
+    val clientAddress: String = "",
+    val waitingSinceMs: Long = System.currentTimeMillis(),
+    val urgent: Boolean = false,
+    val completed: Boolean = false,
+    val createdAtMs: Long = System.currentTimeMillis(),
+    val updatedAtMs: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "delivery_articles",
+    foreignKeys = [
+        ForeignKey(
+            entity = DeliveryNoteEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["noteId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["noteId"])]
+)
+data class DeliveryArticleEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    val noteId: Long = 0L,
+    val text: String = "",
+    val delivered: Boolean = false,
+    val deliveredAtMs: Long? = null,
+    val sortOrder: Int = 0
+)
+
+data class DeliveryNoteWithArticles(
+    @Embedded val note: DeliveryNoteEntity,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "noteId"
+    )
+    val articles: List<DeliveryArticleEntity>
+) {
+    val orderedArticles: List<DeliveryArticleEntity>
+        get() = articles.sortedWith(compareBy<DeliveryArticleEntity> { it.delivered }.thenBy { it.sortOrder }.thenBy { it.id })
+
+    val pendingArticles: List<DeliveryArticleEntity>
+        get() = articles.filter { !it.delivered }.sortedWith(compareBy<DeliveryArticleEntity> { it.sortOrder }.thenBy { it.id })
+
+    val deliveredArticles: List<DeliveryArticleEntity>
+        get() = articles.filter { it.delivered }.sortedWith(compareBy<DeliveryArticleEntity> { it.sortOrder }.thenBy { it.id })
+
+    val pendingCount: Int get() = articles.count { !it.delivered }
+    val deliveredCount: Int get() = articles.count { it.delivered }
+    val totalCount: Int get() = articles.size
+
+    val displayClientTitle: String
+        get() = when {
+            note.clientName.isNotBlank() -> note.clientName.trim()
+            note.clientPhone.isNotBlank() -> note.clientPhone.trim()
+            note.clientAddress.isNotBlank() -> note.clientAddress.trim()
+            else -> "Client sans nom"
+        }
+
+    fun waitingDays(nowMs: Long = System.currentTimeMillis()): Int =
+        calculateWaitingDays(note.waitingSinceMs, nowMs)
 }
+
+@Entity(tableName = "restock_notes")
+data class RestockNoteEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    val articleName: String = "",
+    val quantityNote: String = "",
+    val urgent: Boolean = false,
+    val purchased: Boolean = false,
+    val createdAtMs: Long = System.currentTimeMillis(),
+    val updatedAtMs: Long = System.currentTimeMillis()
+)
 
 enum class JournalEntryType {
     DELIVERY,
     PURCHASE;
 
     companion object {
-        fun fromRaw(raw: String?): JournalEntryType {
-            return entries.firstOrNull { it.name.equals(raw?.trim(), ignoreCase = true) } ?: DELIVERY
-        }
+        fun fromRaw(raw: String?): JournalEntryType =
+            entries.firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: DELIVERY
     }
 }
 
-@Keep
-@IgnoreExtraProperties
-data class DeliveryLineItem(
-    val lineId: String = "",
-    val text: String = "",
-    val delivered: Boolean = false,
-    val deliveredAtMs: Long = 0L
-) {
-    fun toFirestoreMap(): Map<String, Any> = mapOf(
-        "lineId" to lineId.ifBlank { UUID.randomUUID().toString().take(12) },
-        "text" to text.trim().take(200),
-        "delivered" to delivered,
-        "deliveredAtMs" to deliveredAtMs
-    )
-}
-
-@Keep
-@IgnoreExtraProperties
-data class DeliveryNote(
-    @DocumentId val id: String = "",
-    val userId: String = "",
-    val clientName: String = "",
-    val clientPhone: String = "",
-    val clientAddress: String = "",
-    val items: List<DeliveryLineItem> = emptyList(),
-    val completed: Boolean = false,
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null
-) {
-    val deliveredCount: Int
-        get() = items.count { it.delivered }
-
-    val pendingCount: Int
-        get() = items.count { !it.delivered }
-
-    val displayClientTitle: String
-        get() = when {
-            clientName.isNotBlank() -> clientName.trim()
-            clientPhone.isNotBlank() -> clientPhone.trim()
-            clientAddress.isNotBlank() -> clientAddress.trim()
-            else -> "Client sans nom"
-        }
-}
-
-@Keep
-@IgnoreExtraProperties
-data class RestockNote(
-    @DocumentId val id: String = "",
-    val userId: String = "",
-    val articleName: String = "",
-    val quantityNote: String = "",
-    val urgent: Boolean = false,
-    val purchased: Boolean = false,
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null
-)
-
-@Keep
-@IgnoreExtraProperties
-data class JournalEntry(
-    @DocumentId val id: String = "",
-    val userId: String = "",
+@Entity(tableName = "journal_entries")
+data class JournalEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     val entryType: String = JournalEntryType.DELIVERY.name,
     val articleText: String = "",
     val quantityNote: String = "",
     val clientName: String = "",
     val clientPhone: String = "",
     val clientAddress: String = "",
-    val sourceNoteId: String = "",
-    val sourceLineId: String = "",
+    val sourceNoteId: Long = 0L,
+    val sourceArticleId: Long = 0L,
     val dayKey: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null
+    val createdAtMs: Long = System.currentTimeMillis()
 ) {
-    val type: JournalEntryType
-        get() = JournalEntryType.fromRaw(entryType)
+    val type: JournalEntryType get() = JournalEntryType.fromRaw(entryType)
 }
-
-sealed interface UndoAction {
-    data class UndoDeliveryLine(
-        val noteId: String,
-        val previousItems: List<DeliveryLineItem>,
-        val previousCompleted: Boolean,
-        val journalEntryId: String
-    ) : UndoAction
-
-    data class UndoRestockPurchase(
-        val noteId: String,
-        val journalEntryId: String
-    ) : UndoAction
-}
-
-data class FeedbackMessage(
-    val id: String = UUID.randomUUID().toString(),
-    val text: String,
-    val isError: Boolean = false,
-    val undoAction: UndoAction? = null
-)
 
 data class JournalDayGroup(
     val dayKey: String,
-    val headerLabel: String,
-    val entries: List<JournalEntry>
+    val label: String,
+    val entries: List<JournalEntryEntity>
 )
 
-/**
- * Combines an article label, optional quantity, and optional unit into a crisp note line
- * such as "60/60 king mat 18 cart" or "Motif limouzine bleu 12 ps".
- */
-fun buildArticleLineText(article: String, quantity: String, unit: String): String {
-    val cleanArticle = article.trim().replace(Regex("\\s+"), " ")
-    if (cleanArticle.isBlank()) return ""
-    val cleanQty = quantity.trim()
-    val cleanUnit = unit.trim()
-    return buildString {
-        append(cleanArticle)
-        if (cleanQty.isNotEmpty()) {
-            append(' ')
-            append(cleanQty)
-            if (cleanUnit.isNotEmpty()) {
-                append(' ')
-                append(cleanUnit)
-            }
-        }
-    }.take(200)
+sealed interface UndoAction {
+    data class UndoDeliveryArticle(
+        val noteId: Long,
+        val articleId: Long,
+        val previousNoteCompleted: Boolean,
+        val journalEntryId: Long
+    ) : UndoAction
+
+    data class UndoRestockPurchase(
+        val restockId: Long,
+        val journalEntryId: Long
+    ) : UndoAction
 }
 
 /**
- * Splits a multi-line free-text notepad block into clean checkable DeliveryLineItems.
+ * Calculates whole calendar days elapsed since [waitingSinceMs] relative to [nowMs].
+ * Returns 0 if waiting started today (or in the future).
  */
-fun parseFreeTextArticleLines(rawText: String): List<DeliveryLineItem> {
-    return rawText
-        .lineSequence()
-        .map { line -> line.trim().removePrefix("-").removePrefix("•").removePrefix("*").trim() }
-        .filter { it.isNotBlank() }
-        .take(50)
-        .map { clean ->
-            DeliveryLineItem(
-                lineId = UUID.randomUUID().toString().replace("-", "").take(12),
-                text = clean.take(200),
-                delivered = false,
-                deliveredAtMs = 0L
-            )
-        }
-        .toList()
-}
-
-fun formatDayKey(date: Date = Date()): String {
-    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-    return fmt.format(date)
-}
-
-fun formatTimeHm(timestamp: Timestamp?): String {
-    val date = timestamp?.toDate() ?: return "--:--"
-    val fmt = SimpleDateFormat("HH:mm", Locale.FRANCE)
-    return fmt.format(date)
-}
-
-fun formatShortDate(timestamp: Timestamp?): String {
-    val date = timestamp?.toDate() ?: return "À l'instant"
-    val todayKey = formatDayKey(Date())
-    val itemKey = formatDayKey(date)
-    return if (itemKey == todayKey) {
-        "Aujourd'hui • ${formatTimeHm(timestamp)}"
-    } else {
-        val fmt = SimpleDateFormat("dd MMM • HH:mm", Locale.FRANCE)
-        fmt.format(date)
+fun calculateWaitingDays(waitingSinceMs: Long, nowMs: Long = System.currentTimeMillis()): Int {
+    val startCal = Calendar.getInstance().apply {
+        timeInMillis = waitingSinceMs
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
     }
+    val nowCal = Calendar.getInstance().apply {
+        timeInMillis = nowMs
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val diffMs = nowCal.timeInMillis - startCal.timeInMillis
+    if (diffMs <= 0L) return 0
+    return ((diffMs + 43_200_000L) / 86_400_000L).toInt().coerceAtLeast(0)
+}
+
+fun formatShortDate(timestampMs: Long, locale: Locale = Locale.FRENCH): String {
+    return SimpleDateFormat("dd MMM", locale).format(Date(timestampMs))
+}
+
+fun formatFullDate(timestampMs: Long, locale: Locale = Locale.FRENCH): String {
+    return SimpleDateFormat("dd MMM yyyy", locale).format(Date(timestampMs))
+}
+
+fun formatWaitingBadgeText(waitingSinceMs: Long, nowMs: Long = System.currentTimeMillis()): String {
+    val days = calculateWaitingDays(waitingSinceMs, nowMs)
+    val shortDate = formatShortDate(waitingSinceMs)
+    return when (days) {
+        0 -> "Attend · Aujourd'hui ($shortDate)"
+        1 -> "Attend depuis $shortDate · 1 jour"
+        else -> "Attend depuis $shortDate · $days jours"
+    }
+}
+
+fun formatDayKey(timestampMs: Long): String {
+    return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(timestampMs))
+}
+
+fun formatTimeHm(timestampMs: Long): String {
+    return SimpleDateFormat("HH:mm", Locale.FRENCH).format(Date(timestampMs))
 }
 
 fun formatDayHeader(
     dayKey: String,
-    todayKey: String = formatDayKey(Date()),
-    yesterdayKey: String = formatDayKey(
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time
-    )
+    todayKey: String,
+    yesterdayKey: String,
+    locale: Locale = Locale.FRENCH
 ): String {
-    return when (dayKey) {
-        todayKey -> "Aujourd'hui"
-        yesterdayKey -> "Hier"
-        else -> {
-            val parsed = runCatching {
-                SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dayKey)
-            }.getOrNull()
-            if (parsed != null) {
-                SimpleDateFormat("EEEE d MMM yyyy", Locale.FRANCE)
-                    .format(parsed)
-                    .replaceFirstChar { it.titlecase(Locale.FRANCE) }
-            } else {
-                dayKey.ifBlank { "Autre date" }
-            }
+    if (dayKey == todayKey) return "Aujourd'hui"
+    if (dayKey == yesterdayKey) return "Hier"
+    return try {
+        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dayKey)
+        if (parsed != null) {
+            SimpleDateFormat("EEEE d MMMM yyyy", locale)
+                .format(parsed)
+                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(locale) else it.toString() }
+        } else {
+            dayKey
         }
+    } catch (_: Exception) {
+        dayKey
     }
 }
 
 fun groupJournalByDay(
-    entries: List<JournalEntry>,
-    todayKey: String = formatDayKey(Date()),
-    yesterdayKey: String = formatDayKey(
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time
-    )
+    entries: List<JournalEntryEntity>,
+    nowMs: Long = System.currentTimeMillis()
 ): List<JournalDayGroup> {
-    val sorted = entries.sortedByDescending { it.createdAt ?: Timestamp(0, 0) }
-    val grouped = LinkedHashMap<String, MutableList<JournalEntry>>()
-    for (entry in sorted) {
-        val key = entry.dayKey.ifBlank {
-            entry.createdAt?.toDate()?.let { formatDayKey(it) } ?: todayKey
-        }
-        grouped.getOrPut(key) { mutableListOf() }.add(entry)
+    if (entries.isEmpty()) return emptyList()
+    val todayKey = formatDayKey(nowMs)
+    val yesterdayCal = Calendar.getInstance().apply {
+        timeInMillis = nowMs
+        add(Calendar.DAY_OF_YEAR, -1)
     }
-    return grouped.entries
+    val yesterdayKey = formatDayKey(yesterdayCal.timeInMillis)
+
+    return entries
+        .groupBy { entry -> entry.dayKey.ifBlank { formatDayKey(entry.createdAtMs) } }
+        .entries
         .sortedByDescending { it.key }
-        .map { (key, list) ->
+        .map { (dayKey, dayEntries) ->
             JournalDayGroup(
-                dayKey = key,
-                headerLabel = formatDayHeader(key, todayKey, yesterdayKey),
-                entries = list
+                dayKey = dayKey,
+                label = formatDayHeader(dayKey, todayKey, yesterdayKey),
+                entries = dayEntries.sortedByDescending { it.createdAtMs }
             )
         }
+}
+
+fun buildArticleLineText(name: String, qty: String, unit: String): String {
+    val cleanName = name.trim()
+    val cleanQty = qty.trim()
+    val cleanUnit = unit.trim()
+    if (cleanName.isEmpty()) return ""
+    return buildString {
+        append(cleanName)
+        if (cleanQty.isNotEmpty()) {
+            append(" ")
+            append(cleanQty)
+            if (cleanUnit.isNotEmpty()) {
+                append(" ")
+                append(cleanUnit)
+            }
+        }
+    }.trim()
+}
+
+fun parseFreeTextArticleLines(raw: String): List<String> {
+    return raw
+        .lines()
+        .map { line -> line.trim().removePrefix("-").removePrefix("•").removePrefix("*").trim() }
+        .filter { it.isNotBlank() }
+        .take(50)
 }

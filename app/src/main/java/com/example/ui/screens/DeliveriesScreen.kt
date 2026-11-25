@@ -2,25 +2,20 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,33 +31,50 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -81,277 +93,395 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.example.R
-import com.example.data.DeliveryLineItem
-import com.example.data.DeliveryNote
-import com.example.data.UiState
+import com.example.data.DeliveryArticleEntity
+import com.example.data.DeliveryNoteWithArticles
 import com.example.data.buildArticleLineText
+import com.example.data.calculateWaitingDays
+import com.example.data.formatFullDate
 import com.example.data.formatShortDate
+import com.example.data.formatWaitingBadgeText
 import com.example.data.parseFreeTextArticleLines
-import com.example.ui.theme.BrickRed
-import com.example.ui.theme.BrickRedSoft
-import com.example.ui.theme.CardWhite
-import com.example.ui.theme.CobaltPhone
-import com.example.ui.theme.CobaltPhoneSoft
-import com.example.ui.theme.HairlineSand
-import com.example.ui.theme.InkCharcoal
-import com.example.ui.theme.StoneMuted
-import com.example.ui.theme.StoneSoft
-import com.example.ui.theme.Terracotta
-import com.example.ui.theme.TerracottaDark
-import com.example.ui.theme.TerracottaSoft
-import com.example.ui.theme.WarmPaper
-import com.example.ui.theme.WarmPaperElevated
-import com.example.ui.theme.WorkshopEmerald
-import com.example.ui.theme.WorkshopEmeraldBorder
-import com.example.ui.theme.WorkshopEmeraldSoft
-import java.util.UUID
+import com.example.ui.theme.BoldGreen
+import com.example.ui.theme.BoldGreenBright
+import com.example.ui.theme.BoldGreenSoft
+import com.example.ui.theme.BoldRed
+import com.example.ui.theme.BoldRedBright
+import com.example.ui.theme.BoldRedSoft
+import com.example.ui.theme.BoldYellow
+import com.example.ui.theme.BoldYellowSoft
+import com.example.ui.theme.Bordeaux
+import com.example.ui.theme.BordeauxBorder
+import com.example.ui.theme.BordeauxSoft
+import com.example.ui.theme.NavyBorder
+import com.example.ui.theme.NavyCanvas
+import com.example.ui.theme.NavySurface
+import com.example.ui.theme.NavySurfaceElevated
+import com.example.ui.theme.OnBoldYellow
+import com.example.ui.theme.RoyalBlue
+import com.example.ui.theme.RoyalBlueSoft
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
+import java.util.Calendar
 
-private val QUICK_UNITS = listOf("cart", "ps", "m²", "sac", "ml", "")
+private enum class DeliveryFilter {
+    ALL,
+    WAITING_OVERDUE,
+    MULTI_ARTICLES
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeliveriesScreen(
-    state: UiState<List<DeliveryNote>>,
-    onSaveNote: (existingId: String?, clientName: String, clientPhone: String, clientAddress: String, items: List<DeliveryLineItem>) -> Unit,
-    onDeleteNote: (String) -> Unit,
-    onCheckOffLine: (DeliveryNote, String) -> Unit
+    notes: List<DeliveryNoteWithArticles>,
+    onSaveNote: (
+        noteId: Long?,
+        clientName: String,
+        clientPhone: String,
+        clientAddress: String,
+        waitingSinceMs: Long,
+        urgent: Boolean,
+        articles: List<DeliveryArticleEntity>
+    ) -> Unit,
+    onAddArticleToNote: (noteId: Long, articleText: String) -> Unit,
+    onUpdateWaitingInfo: (noteId: Long, waitingSinceMs: Long, urgent: Boolean) -> Unit,
+    onDeleteNote: (noteId: Long) -> Unit,
+    onCheckOffArticle: (note: DeliveryNoteWithArticles, article: DeliveryArticleEntity) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf(DeliveryFilter.ALL) }
     var showEditor by remember { mutableStateOf(false) }
-    var editingNote by remember { mutableStateOf<DeliveryNote?>(null) }
-    var deletingNote by remember { mutableStateOf<DeliveryNote?>(null) }
+    var editingNote by remember { mutableStateOf<DeliveryNoteWithArticles?>(null) }
+    var notePendingDelete by remember { mutableStateOf<DeliveryNoteWithArticles?>(null) }
+    var noteForQuickAddArticle by remember { mutableStateOf<DeliveryNoteWithArticles?>(null) }
+    var noteForWaitingDialog by remember { mutableStateOf<DeliveryNoteWithArticles?>(null) }
+
+    val totalPendingArticles = remember(notes) { notes.sumOf { it.pendingCount } }
+    val overdueCount = remember(notes) { notes.count { it.waitingDays() >= 1 || it.note.urgent } }
+
+    val filteredNotes = remember(notes, searchQuery, filter) {
+        val q = searchQuery.trim().lowercase()
+        notes.filter { item ->
+            val matchesFilter = when (filter) {
+                DeliveryFilter.ALL -> true
+                DeliveryFilter.WAITING_OVERDUE -> item.waitingDays() >= 1 || item.note.urgent
+                DeliveryFilter.MULTI_ARTICLES -> item.pendingCount > 1 || item.totalCount > 1
+            }
+            val matchesQuery = q.isEmpty() ||
+                item.note.clientName.lowercase().contains(q) ||
+                item.note.clientPhone.lowercase().contains(q) ||
+                item.note.clientAddress.lowercase().contains(q) ||
+                item.articles.any { it.text.lowercase().contains(q) }
+            matchesFilter && matchesQuery
+        }
+    }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .background(WarmPaper)
+            .background(NavyCanvas)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .widthIn(max = 760.dp)
+                .widthIn(max = 720.dp)
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
+            // Bold Blue / Bordeaux KPI Ribbon
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DepotStatPill(
+                    label = "Clients",
+                    value = notes.size.toString(),
+                    accentBg = RoyalBlueSoft,
+                    accentBorder = RoyalBlue,
+                    valueColor = TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                DepotStatPill(
+                    label = "Articles",
+                    value = totalPendingArticles.toString(),
+                    accentBg = BoldYellowSoft,
+                    accentBorder = BoldYellow,
+                    valueColor = BoldYellow,
+                    modifier = Modifier.weight(1f)
+                )
+                DepotStatPill(
+                    label = "En attente",
+                    value = overdueCount.toString(),
+                    accentBg = BoldRedSoft,
+                    accentBorder = BoldRedBright,
+                    valueColor = Color(0xFFFECACA),
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
-            // Search bar
+            // Search Bar (High-contrast Navy)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                singleLine = true,
                 placeholder = {
                     Text(
                         text = stringResource(R.string.deliveries_search_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = StoneSoft,
+                        color = TextMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 },
                 leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = StoneMuted
-                    )
+                    Icon(Icons.Filled.Search, contentDescription = null, tint = BoldYellow)
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = { searchQuery = "" },
-                            modifier = Modifier.minimumInteractiveComponentSize()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Effacer recherche",
-                                tint = StoneMuted
-                            )
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Effacer", tint = TextSecondary)
                         }
                     }
                 },
+                singleLine = true,
                 shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = CardWhite,
-                    unfocusedContainerColor = CardWhite,
-                    focusedBorderColor = Terracotta,
-                    unfocusedBorderColor = HairlineSand,
-                    focusedTextColor = InkCharcoal,
-                    unfocusedTextColor = InkCharcoal
+                    focusedContainerColor = NavySurfaceElevated,
+                    unfocusedContainerColor = NavySurface,
+                    focusedBorderColor = BoldYellow,
+                    unfocusedBorderColor = NavyBorder,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = BoldYellow
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .testTag("deliveries_search_input")
             )
 
-            when (state) {
-                is UiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Terracotta)
-                    }
-                }
+            // Quick Filter Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filter == DeliveryFilter.ALL,
+                    onClick = { filter = DeliveryFilter.ALL },
+                    label = { Text("Tous (${notes.size})", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = RoyalBlue,
+                        selectedLabelColor = TextPrimary,
+                        containerColor = NavySurface,
+                        labelColor = TextSecondary
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = filter == DeliveryFilter.ALL,
+                        borderColor = NavyBorder,
+                        selectedBorderColor = BoldYellow
+                    ),
+                    modifier = Modifier.testTag("deliveries_filter_all")
+                )
+                FilterChip(
+                    selected = filter == DeliveryFilter.WAITING_OVERDUE,
+                    onClick = { filter = DeliveryFilter.WAITING_OVERDUE },
+                    label = { Text("Retard ($overdueCount)", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = BoldRed,
+                        selectedLabelColor = TextPrimary,
+                        containerColor = NavySurface,
+                        labelColor = Color(0xFFFCA5A5)
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = filter == DeliveryFilter.WAITING_OVERDUE,
+                        borderColor = BoldRedBright.copy(alpha = 0.6f),
+                        selectedBorderColor = BoldRedBright
+                    ),
+                    modifier = Modifier.testTag("deliveries_filter_overdue")
+                )
+                FilterChip(
+                    selected = filter == DeliveryFilter.MULTI_ARTICLES,
+                    onClick = { filter = DeliveryFilter.MULTI_ARTICLES },
+                    label = { Text("Multi-articles", fontWeight = FontWeight.Bold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = BoldYellow,
+                        selectedLabelColor = OnBoldYellow,
+                        containerColor = NavySurface,
+                        labelColor = BoldYellow
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = filter == DeliveryFilter.MULTI_ARTICLES,
+                        borderColor = BoldYellow.copy(alpha = 0.5f),
+                        selectedBorderColor = BoldYellow
+                    ),
+                    modifier = Modifier.testTag("deliveries_filter_multi")
+                )
+            }
 
-                is UiState.Error -> {
-                    ErrorNoticeCard(message = state.message)
-                }
-
-                is UiState.Success -> {
-                    val allNotes = state.data
-                    val filteredNotes = remember(allNotes, searchQuery) {
-                        val q = searchQuery.trim().lowercase()
-                        if (q.isEmpty()) allNotes
-                        else allNotes.filter { note ->
-                            note.clientName.lowercase().contains(q) ||
-                                note.clientPhone.lowercase().contains(q) ||
-                                note.clientAddress.lowercase().contains(q) ||
-                                note.items.any { it.text.lowercase().contains(q) }
-                        }
-                    }
-                    val totalPendingArticles = remember(allNotes) {
-                        allNotes.sumOf { it.pendingCount }
-                    }
-
-                    // Status count header strip
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            if (filteredNotes.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = TerracottaSoft,
-                            border = BorderStroke(1.dp, Terracotta.copy(alpha = 0.25f))
+                            shape = CircleShape,
+                            color = Bordeaux,
+                            border = BorderStroke(2.dp, BoldYellow),
+                            modifier = Modifier.size(68.dp)
                         ) {
-                            Text(
-                                text = "${allNotes.size} note(s) • $totalPendingArticles article(s) à livrer",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TerracottaDark,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            )
-                        }
-                        if (allNotes.isNotEmpty()) {
-                            Text(
-                                text = "Cochez un article livré",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = StoneMuted
-                            )
-                        }
-                    }
-
-                    if (filteredNotes.isEmpty()) {
-                        EmptyDepotState(
-                            icon = Icons.Default.LocalShipping,
-                            iconBg = TerracottaSoft,
-                            iconTint = Terracotta,
-                            title = if (searchQuery.isNotBlank()) "Aucune note trouvée" else stringResource(R.string.deliveries_empty_title),
-                            description = if (searchQuery.isNotBlank()) {
-                                "Aucune note client ne correspond à « $searchQuery »."
-                            } else {
-                                stringResource(R.string.deliveries_empty_desc)
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .testTag("deliveries_notes_list"),
-                            contentPadding = PaddingValues(bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(filteredNotes, key = { it.id }) { note ->
-                                DeliveryNoteCard(
-                                    note = note,
-                                    onCheckOffLine = { lineId -> onCheckOffLine(note, lineId) },
-                                    onEdit = {
-                                        editingNote = note
-                                        showEditor = true
-                                    },
-                                    onDelete = { deletingNote = note }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocalShipping,
+                                    contentDescription = null,
+                                    tint = BoldYellow,
+                                    modifier = Modifier.size(34.dp)
                                 )
                             }
                         }
+                        Text(
+                            text = if (searchQuery.isNotBlank() || filter != DeliveryFilter.ALL) {
+                                "Aucune note trouvée"
+                            } else {
+                                stringResource(R.string.deliveries_empty_title)
+                            },
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (searchQuery.isNotBlank() || filter != DeliveryFilter.ALL) {
+                                "Essayez un autre filtre ou mot-clé."
+                            } else {
+                                stringResource(R.string.deliveries_empty_desc)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(filteredNotes, key = { it.note.id }) { noteWithArticles ->
+                        DeliveryClientCard(
+                            noteWithArticles = noteWithArticles,
+                            onWaitingBadgeClick = { noteForWaitingDialog = noteWithArticles },
+                            onCheckOffArticle = { article -> onCheckOffArticle(noteWithArticles, article) },
+                            onQuickAddArticle = { noteForQuickAddArticle = noteWithArticles },
+                            onEdit = {
+                                editingNote = noteWithArticles
+                                showEditor = true
+                            },
+                            onDelete = { notePendingDelete = noteWithArticles }
+                        )
                     }
                 }
             }
         }
 
+        // Bold Yellow Primary FAB on Deep Navy
         ExtendedFloatingActionButton(
             onClick = {
                 editingNote = null
                 showEditor = true
             },
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-            text = { Text(stringResource(R.string.deliveries_new_note), fontWeight = FontWeight.Bold) },
-            containerColor = Terracotta,
-            contentColor = Color.White,
-            shape = RoundedCornerShape(18.dp),
+            containerColor = BoldYellow,
+            contentColor = OnBoldYellow,
+            shape = RoundedCornerShape(16.dp),
+            icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+            text = {
+                Text(
+                    text = stringResource(R.string.deliveries_new_note),
+                    fontWeight = FontWeight.ExtraBold
+                )
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 18.dp, bottom = 18.dp)
+                .padding(16.dp)
                 .testTag("add_delivery_note_fab")
         )
     }
 
+    // Full Multi-Article Note Editor
     if (showEditor) {
-        DeliveryNoteEditorDialog(
-            existingNote = editingNote,
+        DeliveryNoteEditorSheet(
+            initialNote = editingNote,
             onDismiss = {
                 showEditor = false
                 editingNote = null
             },
-            onSave = { name, phone, address, items ->
-                onSaveNote(editingNote?.id, name, phone, address, items)
+            onSave = { name, phone, address, waitingSinceMs, urgent, articles ->
+                onSaveNote(editingNote?.note?.id, name, phone, address, waitingSinceMs, urgent, articles)
                 showEditor = false
                 editingNote = null
             }
         )
     }
 
-    deletingNote?.let { target ->
+    // 1-Tap Quick Add Another Article to Existing Client
+    noteForQuickAddArticle?.let { target ->
+        QuickAddArticleDialog(
+            clientTitle = target.displayClientTitle,
+            onDismiss = { noteForQuickAddArticle = null },
+            onAdd = { text ->
+                onAddArticleToNote(target.note.id, text)
+                noteForQuickAddArticle = null
+            }
+        )
+    }
+
+    // Red Waiting-Date Inspector & Editor Dialog
+    noteForWaitingDialog?.let { target ->
+        WaitingDateDialog(
+            noteWithArticles = target,
+            onDismiss = { noteForWaitingDialog = null },
+            onSave = { newWaitingSinceMs, urgent ->
+                onUpdateWaitingInfo(target.note.id, newWaitingSinceMs, urgent)
+                noteForWaitingDialog = null
+            }
+        )
+    }
+
+    // Delete Confirmation
+    notePendingDelete?.let { target ->
         AlertDialog(
-            onDismissRequest = { deletingNote = null },
-            containerColor = CardWhite,
-            title = {
-                Text(
-                    text = "Supprimer cette note ?",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = InkCharcoal
-                )
-            },
+            onDismissRequest = { notePendingDelete = null },
+            containerColor = NavySurface,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("Supprimer cette note ?") },
             text = {
-                Text(
-                    text = "La note de « ${target.displayClientTitle} » sera supprimée de la liste des livraisons en attente.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = StoneMuted
-                )
+                Text("Supprimer la note de ${target.displayClientTitle} (${target.pendingCount} article(s) en attente) ?")
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        onDeleteNote(target.id)
-                        deletingNote = null
+                        onDeleteNote(target.note.id)
+                        notePendingDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrickRed)
+                    colors = ButtonDefaults.buttonColors(containerColor = BoldRed, contentColor = TextPrimary),
+                    modifier = Modifier.testTag("confirm_delete_delivery_btn")
                 ) {
-                    Text(stringResource(R.string.action_delete))
+                    Text(stringResource(R.string.action_delete), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deletingNote = null }) {
-                    Text(stringResource(R.string.action_cancel), color = StoneMuted)
+                TextButton(onClick = { notePendingDelete = null }) {
+                    Text(stringResource(R.string.action_cancel), color = BoldYellow)
                 }
             }
         )
@@ -359,305 +489,361 @@ fun DeliveriesScreen(
 }
 
 @Composable
-private fun DeliveryNoteCard(
-    note: DeliveryNote,
-    onCheckOffLine: (String) -> Unit,
+private fun DepotStatPill(
+    label: String,
+    value: String,
+    accentBg: Color,
+    accentBorder: Color,
+    valueColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = accentBg,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.5.dp, accentBorder),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                color = valueColor,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeliveryClientCard(
+    noteWithArticles: DeliveryNoteWithArticles,
+    onWaitingBadgeClick: () -> Unit,
+    onCheckOffArticle: (DeliveryArticleEntity) -> Unit,
+    onQuickAddArticle: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val context = LocalContext.current
-    val hasPartialProgress = note.deliveredCount > 0
+    val note = noteWithArticles.note
+    val pending = noteWithArticles.pendingArticles
+    val delivered = noteWithArticles.deliveredArticles
+    val waitingDays = noteWithArticles.waitingDays()
+    val isOverdueOrUrgent = waitingDays >= 1 || note.urgent
 
     Surface(
         shape = RoundedCornerShape(18.dp),
-        color = CardWhite,
+        color = NavySurface,
         border = BorderStroke(
-            width = 1.dp,
-            color = if (hasPartialProgress) WorkshopEmeraldBorder else HairlineSand
+            width = if (isOverdueOrUrgent) 2.dp else 1.5.dp,
+            color = if (isOverdueOrUrgent) BoldRedBright else BordeauxBorder
         ),
-        shadowElevation = 2.dp,
+        shadowElevation = 4.dp,
         modifier = Modifier
             .fillMaxWidth()
             .testTag("delivery_note_card_${note.id}")
     ) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Left tactile ribbon
-            Box(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Bordeaux Header Strip with Client Info & Edit/Delete
+            Row(
                 modifier = Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(if (hasPartialProgress) WorkshopEmerald else Terracotta)
-            )
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .fillMaxWidth()
+                    .background(Bordeaux)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Card header: client info (optional) + quick actions
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = BoldYellow,
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = Icons.Default.Person,
+                                imageVector = Icons.Filled.Person,
                                 contentDescription = null,
-                                tint = if (note.clientName.isNotBlank()) Terracotta else StoneSoft,
-                                modifier = Modifier.size(17.dp)
-                            )
-                            Text(
-                                text = note.displayClientTitle,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (note.clientName.isNotBlank() || note.clientPhone.isNotBlank()) InkCharcoal else StoneMuted,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                tint = OnBoldYellow,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = noteWithArticles.displayClientTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.horizontalScroll(rememberScrollState())
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = formatShortDate(note.createdAt),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = StoneSoft
-                            )
-                            if (note.items.size > 1) {
+                            // Bold Yellow multi-article count pill
+                            Surface(
+                                color = BoldYellow,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = if (pending.size > 1) {
+                                        "${pending.size} articles en attente"
+                                    } else {
+                                        "1 article en attente"
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = OnBoldYellow,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            if (delivered.isNotEmpty()) {
                                 Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (hasPartialProgress) WorkshopEmeraldSoft else WarmPaperElevated
+                                    color = BoldGreen,
+                                    shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
-                                        text = "${note.deliveredCount}/${note.items.size} livré",
+                                        text = "${delivered.size} livré${if (delivered.size > 1) "s" else ""} ✓",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (hasPartialProgress) WorkshopEmerald else StoneMuted,
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
                             }
                         }
-
-                        // Optional Phone & Address chips
-                        if (note.clientPhone.isNotBlank() || note.clientAddress.isNotBlank()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 2.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (note.clientPhone.isNotBlank()) {
-                                    Surface(
-                                        onClick = {
-                                            val intent = Intent(Intent.ACTION_DIAL).apply {
-                                                data = Uri.parse("tel:${note.clientPhone.trim()}")
-                                            }
-                                            runCatching { context.startActivity(intent) }
-                                        },
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = CobaltPhoneSoft
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Call,
-                                                contentDescription = "Appeler client",
-                                                tint = CobaltPhone,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = note.clientPhone,
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = CobaltPhone,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    }
-                                }
-                                if (note.clientAddress.isNotBlank()) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = WarmPaper,
-                                        modifier = Modifier.weight(1f, fill = false)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.LocationOn,
-                                                contentDescription = null,
-                                                tint = StoneMuted,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Text(
-                                                text = note.clientAddress,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = StoneMuted,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onEdit,
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .testTag("edit_delivery_note_${note.id}")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Modifier la note",
-                                tint = StoneMuted,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .testTag("delete_delivery_note_${note.id}")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = "Supprimer la note",
-                                tint = BrickRed.copy(alpha = 0.8f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
                     }
                 }
 
-                HorizontalDivider(color = HairlineSand.copy(alpha = 0.7f))
-
-                // Paid Articles Checklist
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    note.items.forEach { line ->
-                        DeliveryArticleCheckRow(
-                            item = line,
-                            onCheckOff = { onCheckOffLine(line.lineId) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.testTag("edit_delivery_note_${note.id}")
+                    ) {
+                        Icon(
+                            Icons.Filled.Edit,
+                            contentDescription = "Modifier la note",
+                            tint = BoldYellow,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.testTag("delete_delivery_note_${note.id}")
+                    ) {
+                        Icon(
+                            Icons.Filled.DeleteOutline,
+                            contentDescription = "Supprimer la note",
+                            tint = Color(0xFFFCA5A5),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun DeliveryArticleCheckRow(
-    item: DeliveryLineItem,
-    onCheckOff: () -> Unit
-) {
-    val bgColor by animateColorAsState(
-        targetValue = if (item.delivered) WorkshopEmeraldSoft else WarmPaper,
-        animationSpec = spring(),
-        label = "deliveryLineBg"
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (item.delivered) WorkshopEmeraldBorder else HairlineSand,
-        animationSpec = spring(),
-        label = "deliveryLineBorder"
-    )
-
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = bgColor,
-        border = BorderStroke(1.dp, borderColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 50.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(enabled = !item.delivered, onClick = onCheckOff)
-            .testTag("delivery_line_${item.lineId}")
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Generous tactile check circle
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(if (item.delivered) WorkshopEmerald else CardWhite)
-                    .let { mod ->
-                        if (!item.delivered) {
-                            mod.background(CardWhite)
-                        } else {
-                            mod
-                        }
-                    },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // PROMINENT RED WAITING-DATE SIGNAL BUTTON
                 Surface(
-                    shape = CircleShape,
-                    color = if (item.delivered) WorkshopEmerald else CardWhite,
-                    border = BorderStroke(
-                        width = 2.dp,
-                        color = if (item.delivered) WorkshopEmerald else Terracotta
-                    ),
-                    modifier = Modifier.size(28.dp)
+                    onClick = onWaitingBadgeClick,
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isOverdueOrUrgent) BoldRed else BoldRedSoft,
+                    border = BorderStroke(1.5.dp, BoldRedBright),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .minimumInteractiveComponentSize()
+                        .testTag("waiting_date_red_btn_${note.id}")
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (item.delivered) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Article livré",
-                                tint = Color.White,
+                                imageVector = if (isOverdueOrUrgent) Icons.Filled.Warning else Icons.Filled.Schedule,
+                                contentDescription = "Date d'attente",
+                                tint = if (isOverdueOrUrgent) BoldYellow else BoldRedBright,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = formatWaitingBadgeText(note.waitingSinceMs),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                        if (note.urgent) {
+                            Surface(
+                                color = BoldYellow,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "URGENT",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = OnBoldYellow,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.CalendarMonth,
+                                contentDescription = "Modifier date d'attente",
+                                tint = TextPrimary.copy(alpha = 0.85f),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
-            }
 
-            Text(
-                text = item.text,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontSize = 16.sp,
-                    fontWeight = if (item.delivered) FontWeight.Medium else FontWeight.Bold,
-                    textDecoration = if (item.delivered) TextDecoration.LineThrough else TextDecoration.None
-                ),
-                color = if (item.delivered) WorkshopEmerald else InkCharcoal,
-                modifier = Modifier.weight(1f)
-            )
+                // Optional Phone (1-tap dialer) & Address Chips
+                if (note.clientPhone.isNotBlank() || note.clientAddress.isNotBlank()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (note.clientPhone.isNotBlank()) {
+                            Surface(
+                                onClick = {
+                                    val dialIntent = Intent(Intent.ACTION_DIAL).apply {
+                                        data = Uri.parse("tel:${note.clientPhone.trim()}")
+                                    }
+                                    runCatching { context.startActivity(dialIntent) }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                color = RoyalBlueSoft,
+                                border = BorderStroke(1.dp, RoyalBlue),
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .testTag("call_client_btn_${note.id}")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Call,
+                                        contentDescription = "Appeler",
+                                        tint = BoldGreenBright,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = note.clientPhone.trim(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = TextPrimary
+                                    )
+                                }
+                            }
+                        }
+                        if (note.clientAddress.isNotBlank()) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.LocationOn,
+                                    contentDescription = null,
+                                    tint = BoldYellow,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = note.clientAddress.trim(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
 
-            if (item.delivered) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = WorkshopEmerald
+                // All Pending Articles List (clearly numbered for multi-article clarity)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pending.forEachIndexed { index, article ->
+                        DeliveryArticleRow(
+                            index = index + 1,
+                            article = article,
+                            onCheckOff = { onCheckOffArticle(article) }
+                        )
+                    }
+                }
+
+                // Already delivered articles (partial delivery progress)
+                if (delivered.isNotEmpty()) {
+                    HorizontalDivider(color = NavyBorder)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Déjà livrés :",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BoldGreenBright
+                        )
+                        delivered.forEach { done ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.CheckCircle,
+                                    contentDescription = null,
+                                    tint = BoldGreenBright,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = done.text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextMuted,
+                                    textDecoration = TextDecoration.LineThrough
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 1-Tap "+ Ajouter un autre article" shortcut directly on client card
+                OutlinedButton(
+                    onClick = onQuickAddArticle,
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, BoldYellow.copy(alpha = 0.7f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BoldYellow),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("quick_add_article_btn_${note.id}")
                 ) {
+                    Icon(Icons.Filled.AddCircleOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "LIVRÉ",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        text = "Ajouter un autre article à ce client",
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
             }
@@ -666,500 +852,809 @@ private fun DeliveryArticleCheckRow(
 }
 
 @Composable
-private fun DeliveryNoteEditorDialog(
-    existingNote: DeliveryNote?,
-    onDismiss: () -> Unit,
-    onSave: (clientName: String, clientPhone: String, clientAddress: String, items: List<DeliveryLineItem>) -> Unit
+private fun DeliveryArticleRow(
+    index: Int,
+    article: DeliveryArticleEntity,
+    onCheckOff: () -> Unit
 ) {
-    BackHandler(onBack = onDismiss)
-
-    var clientName by remember(existingNote?.id) { mutableStateOf(existingNote?.clientName ?: "") }
-    var clientPhone by remember(existingNote?.id) { mutableStateOf(existingNote?.clientPhone ?: "") }
-    var clientAddress by remember(existingNote?.id) { mutableStateOf(existingNote?.clientAddress ?: "") }
-
-    var isFreeTextMode by remember { mutableStateOf(false) }
-    var items by remember(existingNote?.id) {
-        mutableStateOf(existingNote?.items ?: emptyList())
-    }
-    var freeTextBlock by remember(existingNote?.id) {
-        mutableStateOf(existingNote?.items?.joinToString("\n") { it.text } ?: "")
-    }
-
-    var articleInput by remember { mutableStateOf("") }
-    var qtyInput by remember { mutableStateOf("") }
-    var selectedUnit by remember { mutableStateOf("cart") }
-    var validationError by remember { mutableStateOf<String?>(null) }
-
-    fun appendStructuredLine() {
-        val built = buildArticleLineText(articleInput, qtyInput, selectedUnit)
-        if (built.isBlank()) return
-        if (items.size >= 50) {
-            validationError = "Maximum 50 articles par note."
-            return
-        }
-        items = items + DeliveryLineItem(
-            lineId = UUID.randomUUID().toString().replace("-", "").take(12),
-            text = built,
-            delivered = false,
-            deliveredAtMs = 0L
-        )
-        articleInput = ""
-        qtyInput = ""
-        validationError = null
-    }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = NavySurfaceElevated,
+        border = BorderStroke(1.dp, NavyBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("delivery_article_row_${article.id}")
     ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = WarmPaper,
-            border = BorderStroke(1.dp, HairlineSand),
-            shadowElevation = 8.dp,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 560.dp)
-                .padding(horizontal = 12.dp, vertical = 16.dp)
-                .imePadding()
-                .testTag("delivery_editor_dialog")
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+            // Yellow index number badge
+            Surface(
+                shape = CircleShape,
+                color = BoldYellowSoft,
+                border = BorderStroke(1.dp, BoldYellow),
+                modifier = Modifier.size(28.dp)
             ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = index.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BoldYellow,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+
+            Text(
+                text = article.text,
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Big tactile BOLD GREEN check button
+            Button(
+                onClick = onCheckOff,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BoldGreen,
+                    contentColor = TextPrimary
+                ),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("check_delivery_article_${article.id}")
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Marquer livré",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Livré",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun QuickAddArticleDialog(
+    clientTitle: String,
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var qty by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("cart") }
+    val units = listOf("cart", "ps", "m²", "ml", "sac")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NavySurface,
+        titleContentColor = TextPrimary,
+        title = {
+            Column {
+                Text("Ajouter un article", style = MaterialTheme.typography.titleLarge, color = BoldYellow)
+                Text("Client : $clientTitle", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Article (ex: Motif limouzine bleu)") },
+                    singleLine = true,
+                    colors = depotInputColors(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("quick_add_article_name_input")
+                )
+                OutlinedTextField(
+                    value = qty,
+                    onValueChange = { qty = it },
+                    label = { Text("Quantité (optionnel)") },
+                    singleLine = true,
+                    colors = depotInputColors(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("quick_add_article_qty_input")
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    units.forEach { u ->
+                        FilterChip(
+                            selected = unit == u,
+                            onClick = { unit = if (unit == u) "" else u },
+                            label = { Text(u, fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BoldYellow,
+                                selectedLabelColor = OnBoldYellow,
+                                containerColor = NavySurfaceElevated,
+                                labelColor = TextSecondary
+                            )
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val text = buildArticleLineText(name, qty, unit)
+                    if (text.isNotBlank()) onAdd(text)
+                },
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = BoldGreen, contentColor = TextPrimary),
+                modifier = Modifier.testTag("confirm_quick_add_article_btn")
+            ) {
+                Text("Ajouter", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel), color = TextSecondary)
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun WaitingDateDialog(
+    noteWithArticles: DeliveryNoteWithArticles,
+    onDismiss: () -> Unit,
+    onSave: (waitingSinceMs: Long, urgent: Boolean) -> Unit
+) {
+    var selectedDateMs by remember { mutableLongStateOf(noteWithArticles.note.waitingSinceMs) }
+    var urgent by remember { mutableStateOf(noteWithArticles.note.urgent) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val days = calculateWaitingDays(selectedDateMs)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = NavySurface,
+        titleContentColor = TextPrimary,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Filled.Warning, contentDescription = null, tint = BoldRedBright)
+                Text("Temps d'attente client", style = MaterialTheme.typography.titleLarge)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(
+                    color = BoldRed,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = noteWithArticles.displayClientTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = BoldYellow
+                        )
+                        Text(
+                            text = "Date : ${formatFullDate(selectedDateMs)}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = when (days) {
+                                0 -> "Attend depuis aujourd'hui"
+                                1 -> "Attend depuis 1 jour"
+                                else -> "Attend depuis $days jours"
+                            },
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+
+                Text("Choisir rapidement :", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        0 to "Aujourd'hui",
+                        1 to "Hier",
+                        2 to "-2 jours",
+                        3 to "-3 jours",
+                        7 to "-7 jours"
+                    ).forEach { (daysAgo, label) ->
+                        val chipSelected = calculateWaitingDays(selectedDateMs) == daysAgo
+                        FilterChip(
+                            selected = chipSelected,
+                            onClick = {
+                                val cal = Calendar.getInstance().apply {
+                                    add(Calendar.DAY_OF_YEAR, -daysAgo)
+                                }
+                                selectedDateMs = cal.timeInMillis
+                            },
+                            label = { Text(label, fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BoldRed,
+                                selectedLabelColor = TextPrimary,
+                                containerColor = NavySurfaceElevated,
+                                labelColor = TextSecondary
+                            )
+                        )
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    border = BorderStroke(1.dp, BoldYellow),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BoldYellow),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("open_waiting_calendar_btn")
+                ) {
+                    Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Choisir une date dans le calendrier")
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (existingNote == null) "Nouvelle note livraison" else "Modifier la note",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = InkCharcoal
-                    )
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.minimumInteractiveComponentSize()
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Fermer", tint = StoneMuted)
+                        Icon(Icons.Filled.PriorityHigh, contentDescription = null, tint = BoldRedBright)
+                        Text("Marquer Urgent (rouge vif)", color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
                     }
-                }
-
-                // Optional client info section
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = CardWhite,
-                    border = BorderStroke(1.dp, HairlineSand)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = "Infos client (optionnel)",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = StoneMuted
+                    Switch(
+                        checked = urgent,
+                        onCheckedChange = { urgent = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = TextPrimary,
+                            checkedTrackColor = BoldRed
                         )
-                        OutlinedTextField(
-                            value = clientName,
-                            onValueChange = { clientName = it.take(120) },
-                            label = { Text("Nom du client") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Words,
-                                imeAction = ImeAction.Next
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("editor_client_name")
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = clientPhone,
-                                onValueChange = { clientPhone = it.take(40) },
-                                label = { Text("Téléphone") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Phone,
-                                    imeAction = ImeAction.Next
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("editor_client_phone")
-                            )
-                            OutlinedTextField(
-                                value = clientAddress,
-                                onValueChange = { clientAddress = it.take(200) },
-                                label = { Text("Adresse / lieu") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    capitalization = KeyboardCapitalization.Sentences,
-                                    imeAction = ImeAction.Next
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("editor_client_address")
-                            )
-                        }
-                    }
-                }
-
-                // Paid Articles section (main focus)
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = CardWhite,
-                    border = BorderStroke(1.5.dp, Terracotta.copy(alpha = 0.35f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Articles payés à livrer",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = TerracottaDark
-                            )
-                            // Mode switcher: Line-by-line vs Free notepad
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                ModeToggleChip(
-                                    label = "Rapide",
-                                    selected = !isFreeTextMode,
-                                    onClick = {
-                                        if (isFreeTextMode) {
-                                            val parsed = parseFreeTextArticleLines(freeTextBlock)
-                                            if (parsed.isNotEmpty()) items = parsed
-                                            isFreeTextMode = false
-                                        }
-                                    }
-                                )
-                                ModeToggleChip(
-                                    label = "Bloc-notes",
-                                    selected = isFreeTextMode,
-                                    onClick = {
-                                        if (!isFreeTextMode) {
-                                            if (articleInput.isNotBlank()) appendStructuredLine()
-                                            freeTextBlock = items.joinToString("\n") { it.text }
-                                            isFreeTextMode = true
-                                        }
-                                    }
-                                )
-                            }
-                        }
-
-                        if (isFreeTextMode) {
-                            OutlinedTextField(
-                                value = freeTextBlock,
-                                onValueChange = {
-                                    freeTextBlock = it
-                                    validationError = null
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = "60/60 king mat 18 cart\nMotif limouzine bleu 12 ps",
-                                        color = StoneSoft
-                                    )
-                                },
-                                minLines = 4,
-                                maxLines = 8,
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("editor_freetext_articles")
-                            )
-                            Text(
-                                text = "Écrivez un article par ligne — chaque ligne deviendra une case à cocher.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = StoneMuted
-                            )
-                        } else {
-                            OutlinedTextField(
-                                value = articleInput,
-                                onValueChange = {
-                                    articleInput = it.take(160)
-                                    validationError = null
-                                },
-                                label = { Text("Article (ex : 60/60 king mat)") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    capitalization = KeyboardCapitalization.Sentences,
-                                    imeAction = ImeAction.Next
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .testTag("editor_article_name")
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = qtyInput,
-                                    onValueChange = { qtyInput = it.take(20) },
-                                    label = { Text("Qté (ex : 18)") },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Decimal,
-                                        imeAction = ImeAction.Done
-                                    ),
-                                    keyboardActions = KeyboardActions(onDone = { appendStructuredLine() }),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("editor_article_qty")
-                                )
-                                Button(
-                                    onClick = { appendStructuredLine() },
-                                    enabled = articleInput.isNotBlank(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Terracotta),
-                                    modifier = Modifier
-                                        .height(54.dp)
-                                        .testTag("editor_add_line_btn")
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Ajouter", fontWeight = FontWeight.Bold)
-                                }
-                            }
-
-                            // Quick unit pills: cart, ps, m², sac, ml
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                QUICK_UNITS.forEach { unit ->
-                                    val selected = selectedUnit == unit
-                                    Surface(
-                                        onClick = { selectedUnit = unit },
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (selected) Terracotta else WarmPaper,
-                                        border = BorderStroke(1.dp, if (selected) Terracotta else HairlineSand)
-                                    ) {
-                                        Text(
-                                            text = unit.ifBlank { "sans unité" },
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = if (selected) Color.White else InkCharcoal,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (items.isNotEmpty()) {
-                                HorizontalDivider(color = HairlineSand)
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    items.forEachIndexed { idx, line ->
-                                        Surface(
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = WarmPaper,
-                                            border = BorderStroke(1.dp, HairlineSand)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text(
-                                                    text = "${idx + 1}. ${line.text}",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = InkCharcoal,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                IconButton(
-                                                    onClick = { items = items.filterNot { it.lineId == line.lineId } },
-                                                    modifier = Modifier.minimumInteractiveComponentSize()
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Close,
-                                                        contentDescription = "Retirer l'article",
-                                                        tint = BrickRed,
-                                                        modifier = Modifier.size(18.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                validationError?.let { err ->
-                    Text(
-                        text = err,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BrickRed,
-                        fontWeight = FontWeight.SemiBold
                     )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, HairlineSand),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(50.dp)
-                    ) {
-                        Text(stringResource(R.string.action_cancel), color = StoneMuted, fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = {
-                            val finalItems = if (isFreeTextMode) {
-                                parseFreeTextArticleLines(freeTextBlock)
-                            } else {
-                                val pendingBuilt = buildArticleLineText(articleInput, qtyInput, selectedUnit)
-                                if (pendingBuilt.isNotBlank()) {
-                                    items + DeliveryLineItem(
-                                        lineId = UUID.randomUUID().toString().replace("-", "").take(12),
-                                        text = pendingBuilt,
-                                        delivered = false,
-                                        deliveredAtMs = 0L
-                                    )
-                                } else {
-                                    items
-                                }
-                            }
-                            if (finalItems.isEmpty()) {
-                                validationError = "Ajoutez au moins un article à livrer."
-                                return@Button
-                            }
-                            onSave(clientName, clientPhone, clientAddress, finalItems)
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Terracotta),
-                        modifier = Modifier
-                            .weight(1.3f)
-                            .height(50.dp)
-                            .testTag("editor_save_note_btn")
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
-                    }
                 }
             }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(selectedDateMs, urgent) },
+                colors = ButtonDefaults.buttonColors(containerColor = BoldGreen, contentColor = TextPrimary),
+                modifier = Modifier.testTag("save_waiting_date_btn")
+            ) {
+                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel), color = TextSecondary)
+            }
+        }
+    )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMs)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedDateMs = it }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK", color = BoldYellow, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Annuler", color = TextSecondary)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun ModeToggleChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
+private fun DeliveryNoteEditorSheet(
+    initialNote: DeliveryNoteWithArticles?,
+    onDismiss: () -> Unit,
+    onSave: (
+        clientName: String,
+        clientPhone: String,
+        clientAddress: String,
+        waitingSinceMs: Long,
+        urgent: Boolean,
+        articles: List<DeliveryArticleEntity>
+    ) -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        color = if (selected) TerracottaSoft else WarmPaper,
-        border = BorderStroke(1.dp, if (selected) Terracotta else HairlineSand)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (selected) TerracottaDark else StoneMuted,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-        )
-    }
-}
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var clientName by remember { mutableStateOf(initialNote?.note?.clientName.orEmpty()) }
+    var clientPhone by remember { mutableStateOf(initialNote?.note?.clientPhone.orEmpty()) }
+    var clientAddress by remember { mutableStateOf(initialNote?.note?.clientAddress.orEmpty()) }
+    var waitingSinceMs by remember { mutableLongStateOf(initialNote?.note?.waitingSinceMs ?: System.currentTimeMillis()) }
+    var urgent by remember { mutableStateOf(initialNote?.note?.urgent ?: false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-@Composable
-internal fun EmptyDepotState(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconBg: Color,
-    iconTint: Color,
-    title: String,
-    description: String,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.padding(24.dp),
-        contentAlignment = Alignment.Center
+    var freeTextMode by remember { mutableStateOf(false) }
+    var freeTextBlock by remember { mutableStateOf("") }
+
+    var articleInput by remember { mutableStateOf("") }
+    var qtyInput by remember { mutableStateOf("") }
+    var unitInput by remember { mutableStateOf("cart") }
+    val units = listOf("cart", "ps", "m²", "ml", "sac")
+
+    val articlesList = remember {
+        mutableStateListOf<DeliveryArticleEntity>().apply {
+            if (initialNote != null) {
+                addAll(initialNote.orderedArticles)
+            }
+        }
+    }
+
+    fun pushCurrentArticleLine() {
+        val text = buildArticleLineText(articleInput, qtyInput, unitInput)
+        if (text.isNotBlank()) {
+            articlesList.add(
+                DeliveryArticleEntity(
+                    text = text,
+                    delivered = false,
+                    sortOrder = articlesList.size
+                )
+            )
+            articleInput = ""
+            qtyInput = ""
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = NavySurface,
+        contentColor = TextPrimary
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.widthIn(max = 320.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(iconBg),
-                contentAlignment = Alignment.Center
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(32.dp)
+                Text(
+                    text = if (initialNote == null) "Nouvelle note client" else "Modifier la note",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = BoldYellow
+                )
+                Surface(
+                    color = Bordeaux,
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, BoldYellow)
+                ) {
+                    Text(
+                        text = "${articlesList.size} article${if (articlesList.size > 1) "s" else ""}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TextPrimary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
+            // Waiting Date Selector (Red Signal Section)
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = BoldRedSoft,
+                border = BorderStroke(1.5.dp, BoldRedBright),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Filled.Schedule, contentDescription = null, tint = BoldYellow, modifier = Modifier.size(18.dp))
+                            Text(
+                                text = "Attend depuis : ${formatShortDate(waitingSinceMs)}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = TextPrimary
+                            )
+                        }
+                        TextButton(
+                            onClick = { showDatePicker = true },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = BoldYellow, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Date", color = BoldYellow, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(0 to "Aujourd'hui", 1 to "Hier", 2 to "-2 j", 3 to "-3 j").forEach { (daysAgo, label) ->
+                            val selected = calculateWaitingDays(waitingSinceMs) == daysAgo
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -daysAgo) }
+                                    waitingSinceMs = cal.timeInMillis
+                                },
+                                label = { Text(label, fontWeight = FontWeight.Bold) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = BoldRed,
+                                    selectedLabelColor = TextPrimary,
+                                    containerColor = NavySurface,
+                                    labelColor = TextSecondary
+                                )
+                            )
+                        }
+                        FilterChip(
+                            selected = urgent,
+                            onClick = { urgent = !urgent },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.PriorityHigh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            label = { Text("Urgent", fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BoldYellow,
+                                selectedLabelColor = OnBoldYellow,
+                                selectedLeadingIconColor = OnBoldYellow,
+                                containerColor = NavySurface,
+                                labelColor = Color(0xFFFCA5A5)
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Multi-Article Section Header + Mode Toggle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Articles à livrer (plusieurs possibles)",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = BoldYellow
+                )
+                TextButton(
+                    onClick = {
+                        if (!freeTextMode && articleInput.isNotBlank()) pushCurrentArticleLine()
+                        if (!freeTextMode) {
+                            freeTextBlock = articlesList.joinToString("\n") { it.text }
+                        } else {
+                            val parsed = parseFreeTextArticleLines(freeTextBlock)
+                            articlesList.clear()
+                            parsed.forEachIndexed { idx, line ->
+                                articlesList.add(DeliveryArticleEntity(text = line, sortOrder = idx))
+                            }
+                        }
+                        freeTextMode = !freeTextMode
+                    },
+                    modifier = Modifier.testTag("toggle_freetext_mode_btn")
+                ) {
+                    Text(
+                        text = if (freeTextMode) "Mode ligne par ligne" else "Mode bloc-notes",
+                        color = BoldGreenBright,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            if (freeTextMode) {
+                OutlinedTextField(
+                    value = freeTextBlock,
+                    onValueChange = { freeTextBlock = it },
+                    placeholder = {
+                        Text(
+                            "Un article par ligne :\n60/60 king mat 18 cart\nMotif limouzine bleu 12 ps\nPlinthe 8/60 40 ml",
+                            color = TextMuted
+                        )
+                    },
+                    minLines = 4,
+                    maxLines = 8,
+                    colors = depotInputColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("freetext_articles_input")
+                )
+            } else {
+                // Multi-article adder card
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = NavySurfaceElevated,
+                    border = BorderStroke(1.dp, NavyBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = articleInput,
+                            onValueChange = { articleInput = it },
+                            placeholder = { Text("Ex : 60/60 king mat ou Motif limouzine bleu", color = TextMuted) },
+                            label = { Text("Nom de l'article") },
+                            singleLine = true,
+                            colors = depotInputColors(),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences,
+                                imeAction = ImeAction.Next
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("article_name_input")
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = qtyInput,
+                                onValueChange = { qtyInput = it },
+                                placeholder = { Text("18", color = TextMuted) },
+                                label = { Text("Qté") },
+                                singleLine = true,
+                                colors = depotInputColors(),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { pushCurrentArticleLine() }),
+                                modifier = Modifier
+                                    .weight(0.45f)
+                                    .testTag("article_qty_input")
+                            )
+
+                            Button(
+                                onClick = { pushCurrentArticleLine() },
+                                enabled = articleInput.isNotBlank(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = BoldYellow,
+                                    contentColor = OnBoldYellow
+                                ),
+                                modifier = Modifier
+                                    .weight(0.55f)
+                                    .height(54.dp)
+                                    .testTag("add_article_line_btn")
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Ajouter article", fontWeight = FontWeight.ExtraBold)
+                            }
+                        }
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            units.forEach { u ->
+                                FilterChip(
+                                    selected = unitInput == u,
+                                    onClick = { unitInput = if (unitInput == u) "" else u },
+                                    label = { Text(u, fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = RoyalBlue,
+                                        selectedLabelColor = TextPrimary,
+                                        containerColor = NavySurface,
+                                        labelColor = TextSecondary
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Current multi-article list preview
+                if (articlesList.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        articlesList.forEachIndexed { idx, item ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = BordeauxSoft,
+                                border = BorderStroke(1.dp, BordeauxBorder),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "${idx + 1}. ${item.text}",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        textDecoration = if (item.delivered) TextDecoration.LineThrough else TextDecoration.None,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = { articlesList.removeAt(idx) },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(Icons.Filled.Close, contentDescription = "Retirer", tint = Color(0xFFFCA5A5))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(color = NavyBorder)
+
+            // Optional Client Info
+            Text(
+                text = "Client (optionnel)",
+                style = MaterialTheme.typography.titleSmall,
+                color = TextSecondary
+            )
+
+            OutlinedTextField(
+                value = clientName,
+                onValueChange = { clientName = it },
+                label = { Text("Nom du client (optionnel)") },
+                singleLine = true,
+                colors = depotInputColors(),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("client_name_input")
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = clientPhone,
+                    onValueChange = { clientPhone = it },
+                    label = { Text("Téléphone") },
+                    singleLine = true,
+                    colors = depotInputColors(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("client_phone_input")
+                )
+                OutlinedTextField(
+                    value = clientAddress,
+                    onValueChange = { clientAddress = it },
+                    label = { Text("Adresse") },
+                    singleLine = true,
+                    colors = depotInputColors(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("client_address_input")
                 )
             }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = InkCharcoal
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = StoneMuted,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
+
+            // Bold GREEN Save Button
+            Button(
+                onClick = {
+                    val finalArticles = if (freeTextMode) {
+                        parseFreeTextArticleLines(freeTextBlock).mapIndexed { idx, txt ->
+                            DeliveryArticleEntity(text = txt, sortOrder = idx)
+                        }
+                    } else {
+                        if (articleInput.isNotBlank()) pushCurrentArticleLine()
+                        articlesList.toList()
+                    }
+                    if (finalArticles.isNotEmpty()) {
+                        onSave(clientName, clientPhone, clientAddress, waitingSinceMs, urgent, finalArticles)
+                    }
+                },
+                enabled = if (freeTextMode) {
+                    parseFreeTextArticleLines(freeTextBlock).isNotEmpty()
+                } else {
+                    articlesList.isNotEmpty() || articleInput.isNotBlank()
+                },
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BoldGreen,
+                    contentColor = TextPrimary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .testTag("save_delivery_note_btn")
+            ) {
+                Icon(Icons.Filled.Check, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.action_save),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = waitingSinceMs)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { waitingSinceMs = it }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK", color = BoldYellow, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Annuler", color = TextSecondary)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
 
 @Composable
-internal fun ErrorNoticeCard(message: String) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = BrickRedSoft,
-        border = BorderStroke(1.dp, BrickRed.copy(alpha = 0.3f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = BrickRed,
-            modifier = Modifier.padding(14.dp)
-        )
-    }
-}
+internal fun depotInputColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = NavySurfaceElevated,
+    unfocusedContainerColor = NavyCanvas,
+    focusedBorderColor = BoldYellow,
+    unfocusedBorderColor = NavyBorder,
+    focusedTextColor = TextPrimary,
+    unfocusedTextColor = TextPrimary,
+    focusedLabelColor = BoldYellow,
+    unfocusedLabelColor = TextMuted,
+    cursorColor = BoldYellow
+)
