@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">DepotNote</string>
+    <string name="tab_deliveries">Livraisons</string>
+    <string name="tab_restock">À commander</string>
+    <string name="tab_journal">Journal</string>
+    <string name="auth_title">DepotNote</string>
+    <string name="auth_subtitle">Vos notes de livraisons clients, articles à commander et journal quotidien — synchronisés en toute sécurité.</string>
+    <string name="auth_google_btn">Continuer avec Google</string>
+    <string name="auth_sign_out">Déconnexion</string>
+    <string name="deliveries_title">Livraisons clients</string>
+    <string name="deliveries_search_hint">Chercher client, téléphone ou article...</string>
+    <string name="deliveries_new_note">Nouvelle note</string>
+    <string name="deliveries_empty_title">Aucune livraison en attente</string>
+    <string name="deliveries_empty_desc">Ajoutez une note client avec les articles payés à livrer (ex : 60/60 king mat 18 cart).</string>
+    <string name="restock_title">À commander</string>
+    <string name="restock_input_hint">Article presque épuisé (ex : 60/60 king mat)</string>
+    <string name="restock_qty_hint">Qté / remarque (optionnel)</string>
+    <string name="restock_add_btn">Ajouter</string>
+    <string name="restock_empty_title">Rien à commander</string>
+    <string name="restock_empty_desc">En parcourant le dépôt, notez ici les articles presque épuisés puis cochez-les une fois achetés.</string>
+    <string name="journal_title">Journal</string>
+    <string name="journal_search_hint">Rechercher dans le journal...</string>
+    <string name="journal_empty_title">Journal vide</string>
+    <string name="journal_empty_desc">Chaque article livré ou commandé que vous cochez apparaît ici automatiquement, classé par jour.</string>
+    <string name="action_undo">Annuler</string>
+    <string name="action_save">Enregistrer</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_delete">Supprimer</string>
+    <string name="action_retry">Réessayer</string>
+</resources>

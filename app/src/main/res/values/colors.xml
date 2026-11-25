@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="app_bg_navy_ice">#FF0B0E1A</color>
+    <color name="app_surface_ice">#FF13172B</color>
+    <color name="app_navy_primary">#FF0E1324</color>
+    <color name="purple_200">#FF38BDF8</color>
+    <color name="purple_500">#FF00D4FF</color>
+    <color name="purple_700">#FF161C33</color>
+    <color name="teal_200">#FF22D3EE</color>
+    <color name="teal_700">#FF10B981</color>
+    <color name="black">#FF0B0E1A</color>
+    <color name="white">#FFF3F6FF</color>
+</resources>

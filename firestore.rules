@@ -1,0 +1,160 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- HARDENED GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- VALIDATION BLUEPRINTS ---
+    function isValidDeliveryNote(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'clientName', 'clientPhone', 'clientAddress',
+          'items', 'completed', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'clientName', 'clientPhone', 'clientAddress',
+          'items', 'completed', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == userId &&
+        data.clientName is string && data.clientName.size() <= 120 &&
+        data.clientPhone is string && data.clientPhone.size() <= 40 &&
+        data.clientAddress is string && data.clientAddress.size() <= 200 &&
+        data.items is list && data.items.size() >= 1 && data.items.size() <= 50 &&
+        data.items[0] is map &&
+        data.completed is bool &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidRestockNote(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'articleName', 'quantityNote', 'urgent', 'purchased', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'articleName', 'quantityNote', 'urgent', 'purchased', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && data.userId == userId &&
+        data.articleName is string && data.articleName.size() >= 1 && data.articleName.size() <= 200 &&
+        data.quantityNote is string && data.quantityNote.size() <= 100 &&
+        data.urgent is bool &&
+        data.purchased is bool &&
+        data.createdAt is timestamp && data.createdAt <= request.time &&
+        data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidJournalEntry(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'entryType', 'articleText', 'quantityNote',
+          'clientName', 'clientPhone', 'clientAddress',
+          'sourceNoteId', 'sourceLineId', 'dayKey', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'entryType', 'articleText', 'quantityNote',
+          'clientName', 'clientPhone', 'clientAddress',
+          'sourceNoteId', 'sourceLineId', 'dayKey', 'createdAt'
+        ]) &&
+        data.userId is string && data.userId == userId &&
+        data.entryType is string && (data.entryType == 'DELIVERY' || data.entryType == 'PURCHASE') &&
+        data.articleText is string && data.articleText.size() >= 1 && data.articleText.size() <= 240 &&
+        data.quantityNote is string && data.quantityNote.size() <= 100 &&
+        data.clientName is string && data.clientName.size() <= 120 &&
+        data.clientPhone is string && data.clientPhone.size() <= 40 &&
+        data.clientAddress is string && data.clientAddress.size() <= 200 &&
+        data.sourceNoteId is string && data.sourceNoteId.size() <= 128 &&
+        data.sourceLineId is string && data.sourceLineId.size() <= 64 &&
+        data.dayKey is string && data.dayKey.size() == 10 && data.dayKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // --- USER-SCOPED COLLECTIONS ---
+    match /users/{userId} {
+      // Delivery notes (Client paid articles checklist)
+      match /deliveryNotes/{noteId} {
+        allow get: if isOwner(userId) && isValidId(noteId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+          isValidId(noteId) &&
+          isValidDeliveryNote(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+          isValidId(noteId) &&
+          isValidDeliveryNote(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Check/uncheck delivered article lines or undo completion
+            incoming().diff(existing()).affectedKeys().hasOnly(['items', 'completed', 'updatedAt']) ||
+            // Action 2: Edit note client details and/or article items
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'clientName', 'clientPhone', 'clientAddress', 'items', 'completed', 'updatedAt'
+            ])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(noteId);
+      }
+
+      // Depot restock / purchase notes
+      match /restockNotes/{noteId} {
+        allow get: if isOwner(userId) && isValidId(noteId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+          isValidId(noteId) &&
+          isValidRestockNote(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+          isValidId(noteId) &&
+          isValidRestockNote(incoming(), userId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Check off or undo purchased state
+            incoming().diff(existing()).affectedKeys().hasOnly(['purchased', 'updatedAt']) ||
+            // Action 2: Edit article name, quantity note, or urgency
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'articleName', 'quantityNote', 'urgent', 'updatedAt'
+            ])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(noteId);
+      }
+
+      // Daily journal history (append & delete-only; entries are immutable once logged)
+      match /journalEntries/{entryId} {
+        allow get: if isOwner(userId) && isValidId(entryId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+          isValidId(entryId) &&
+          isValidJournalEntry(incoming(), userId);
+
+        allow update: if false;
+
+        allow delete: if isOwner(userId) && isValidId(entryId);
+      }
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "entities": {
+    "DeliveryNote": {
+      "title": "DeliveryNote",
+      "description": "A client delivery note listing paid articles waiting to be handed over at the depot.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Optional client display name."
+        },
+        "clientPhone": {
+          "type": "string",
+          "description": "Optional client phone number."
+        },
+        "clientAddress": {
+          "type": "string",
+          "description": "Optional client delivery address or depot remark."
+        },
+        "items": {
+          "type": "array",
+          "description": "Bounded list (1..50) of paid article objects ({lineId, text, delivered, deliveredAtMs})."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "True when every article in items has been checked off as delivered."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable creation server timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification server timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["userId", "clientName", "clientPhone", "clientAddress", "items", "completed", "createdAt", "updatedAt"]
+    },
+    "RestockNote": {
+      "title": "RestockNote",
+      "description": "An almost-sold-out depot article to order/purchase, checked off once bought.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "articleName": {
+          "type": "string",
+          "description": "Name or reference of the article to order."
+        },
+        "quantityNote": {
+          "type": "string",
+          "description": "Optional target quantity or supplier note."
+        },
+        "urgent": {
+          "type": "boolean",
+          "description": "True if the article is critically low or out of stock."
+        },
+        "purchased": {
+          "type": "boolean",
+          "description": "True once the user checks off the item as purchased/ordered."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable creation server timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification server timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["userId", "articleName", "quantityNote", "urgent", "purchased", "createdAt", "updatedAt"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "Daily history record created automatically when a client article is delivered or a restock article is purchased.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "entryType": {
+          "type": "string",
+          "enum": ["DELIVERY", "PURCHASE"],
+          "description": "Whether this log entry records a client delivery or a depot restock purchase."
+        },
+        "articleText": {
+          "type": "string",
+          "description": "Description and quantity of the article delivered or purchased."
+        },
+        "quantityNote": {
+          "type": "string",
+          "description": "Optional extra quantity or remark."
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Optional client name (for DELIVERY entries)."
+        },
+        "clientPhone": {
+          "type": "string",
+          "description": "Optional client phone (for DELIVERY entries)."
+        },
+        "clientAddress": {
+          "type": "string",
+          "description": "Optional client address (for DELIVERY entries)."
+        },
+        "sourceNoteId": {
+          "type": "string",
+          "description": "Document ID of the originating delivery or restock note."
+        },
+        "sourceLineId": {
+          "type": "string",
+          "description": "Line ID inside the originating delivery note (empty for restock)."
+        },
+        "dayKey": {
+          "type": "string",
+          "description": "Local calendar day key in yyyy-MM-dd format for grouping."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable completion server timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "entryType",
+        "articleText",
+        "quantityNote",
+        "clientName",
+        "clientPhone",
+        "clientAddress",
+        "sourceNoteId",
+        "sourceLineId",
+        "dayKey",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/deliveryNotes/{noteId}": {
+      "schema": { "$ref": "#/entities/DeliveryNote" },
+      "description": "Per-user client delivery notes with paid articles checklist."
+    },
+    "/users/{userId}/restockNotes/{noteId}": {
+      "schema": { "$ref": "#/entities/RestockNote" },
+      "description": "Per-user depot restock / purchase notes."
+    },
+    "/users/{userId}/journalEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/JournalEntry" },
+      "description": "Per-user daily history journal of delivered and purchased articles."
+    }
+  }
+}

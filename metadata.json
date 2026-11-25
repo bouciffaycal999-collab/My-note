@@ -1,0 +1,6 @@
+{
+  "name": "DepotNote",
+  "description": "Carnet de dépôt simple et rapide : notes de livraisons clients payées à cocher, liste d'articles à commander en rayon et journal quotidien des livraisons et achats.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path
+        name="shared_apks"
+        path="shared_apks/" />
+    <cache-path
+        name="shared_pdfs"
+        path="shared_pdfs/" />
+    <files-path
+        name="invoice_pdfs"
+        path="invoices_pdf/" />
+    <files-path
+        name="invoice_photos"
+        path="invoices_photo/" />
+    <cache-path
+        name="shared_photos"
+        path="shared_photos/" />
+    <cache-path
+        name="catalog_exports"
+        path="catalog_exports/" />
+    <cache-path
+        name="cloture_reports"
+        path="cloture_reports/" />
+    <files-path
+        name="cloture_docs"
+        path="cloture_docs/" />
+</paths>
