@@ -3446,7 +3446,7 @@
     "color": "#94a3b8",
     "colorName": "Gris Minéral",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "polie_rectifie",
+    "finition": "polie + rectifié",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -3565,7 +3565,7 @@
     "color": "#ca8a04",
     "colorName": "Doré / Gold Prestigieux",
     "image": "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=600&q=80",
-    "finition": "polie_rectifie",
+    "finition": "polie + rectifié",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -6487,7 +6487,7 @@
     "color": "#e2d4c0",
     "colorName": "Beige Chaleureux",
     "image": "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -6504,7 +6504,7 @@
     "color": "#e2d4c0",
     "colorName": "Beige Chaleureux",
     "image": "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -6521,7 +6521,7 @@
     "color": "#e2d4c0",
     "colorName": "Beige Chaleureux",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -6538,7 +6538,7 @@
     "color": "#94a3b8",
     "colorName": "Gris Minéral",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -6555,7 +6555,7 @@
     "color": "#94a3b8",
     "colorName": "Gris Minéral",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "sol"
   },
@@ -9866,7 +9866,7 @@
     "color": "#e2d4c0",
     "colorName": "Beige Chaleureux",
     "image": "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "plinthe",
     "pricingUnit": "carton"
@@ -9884,7 +9884,7 @@
     "color": "#e2d4c0",
     "colorName": "Beige Chaleureux",
     "image": "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "plinthe",
     "pricingUnit": "carton"
@@ -9902,7 +9902,7 @@
     "color": "#e2d4c0",
     "colorName": "Beige Chaleureux",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "plinthe",
     "pricingUnit": "carton"
@@ -9920,7 +9920,7 @@
     "color": "#94a3b8",
     "colorName": "Gris Minéral",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "plinthe",
     "pricingUnit": "carton"
@@ -9938,7 +9938,7 @@
     "color": "#94a3b8",
     "colorName": "Gris Minéral",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "satine",
+    "finition": "semi-mat",
     "choix": "1er Choix",
     "categorie": "plinthe",
     "pricingUnit": "carton"
@@ -16154,7 +16154,7 @@
     "color": "#94a3b8",
     "colorName": "Gris Minéral",
     "image": "https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=600&q=80",
-    "finition": "polie_rectifie",
+    "finition": "polie + rectifié",
     "choix": "1er Choix",
     "categorie": "frise",
     "pricingUnit": "piece",
@@ -16294,7 +16294,7 @@
     "color": "#ca8a04",
     "colorName": "Doré / Gold Prestigieux",
     "image": "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=600&q=80",
-    "finition": "polie_rectifie",
+    "finition": "polie + rectifié",
     "choix": "1er Choix",
     "categorie": "frise",
     "pricingUnit": "piece",

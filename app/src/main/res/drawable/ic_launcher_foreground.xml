@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/ic_depotnote_fg_1795641076800"
+        android:drawable="@drawable/img_casaceram_minimal_logo"
         android:gravity="center" />
 </layer-list>
